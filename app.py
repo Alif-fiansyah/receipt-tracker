@@ -6,7 +6,7 @@ import streamlit as st
 from tracker import scan_receipt_with_gemini, generate_financial_advice
 
 st.set_page_config(
-    page_title="Receipt Intelligence System",
+    page_title="ExpenseLog",
     page_icon="■",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -42,8 +42,8 @@ with st.sidebar:
     st.caption("Ambang batas ini digunakan untuk mengukur rasio belanja riil.")
 
 # Header
-st.markdown("### Receipt Intelligence System")
-st.caption("Ekstraksi data transaksi digital, audit mandiri, dan analitik pengeluaran.")
+st.markdown("### ExpenseLog")
+st.caption("Digitalisasi bukti bayar dan manajemen anggaran belanja.")
 st.write("")
 
 tab_scan, tab_history = st.tabs(["Pindai & Koreksi Dokumen", "Laporan & Log Transaksi"])
@@ -81,11 +81,11 @@ with tab_scan:
 
         if image_source:
             st.image(image_source, caption="Pratinjau Berkas", use_container_width=True)
-            if st.button("Ekstrak via Model Visual", type="primary"):
+            if st.button("Pindai Bukti Bayar", type="primary"):
                 temp_path = "temp_receipt.jpg"
                 image_source.save(temp_path)
 
-                with st.spinner("Menjalankan analisis struktural dokumen..."):
+                with st.spinner("Memproses digitalisasi dokumen..."):
                     try:
                         hasil = scan_receipt_with_gemini(temp_path)
                         st.session_state.extracted_data = hasil.model_dump()
@@ -198,7 +198,7 @@ with tab_history:
         st.write("")
         c_adv_btn, c_adv_space = st.columns([1, 3])
         with c_adv_btn:
-            if st.button("Evaluasi Finansial via AI"):
+            if st.button("Analisis Ringkasan Finansial"):
                 ringkasan_teks = f"Total belanja: Rp {total_belanja}. Jumlah struk: {total_transaksi}. Rincian per kategori: {df.groupby('Kategori')['Total'].sum().to_dict()}."
                 with st.spinner("Menghitung pola konsumsi..."):
                     st.session_state.financial_advice = generate_financial_advice(ringkasan_teks)
@@ -207,7 +207,7 @@ with tab_history:
             st.markdown(
                 f"""
                 <div class="advisor-card">
-                    <div class="advisor-title">Evaluasi Pola Pengeluaran</div>
+                    <div class="advisor-title">Analisis Ringkasan Finansial</div>
                     <div class="advisor-body">{st.session_state.financial_advice}</div>
                 </div>
                 """,

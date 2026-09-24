@@ -1,17 +1,18 @@
 # ExpenseLog
 
-Aplikasi manajemen pengeluaran personal dan digitalisasi bukti transaksi berbasis web. **ExpenseLog** dirancang untuk mencatat arus kas secara instan melalui pemindaian foto struk kasir, verifikasi mandiri, pemantauan batas anggaran bulanan, serta penyimpanan data cloud persisten.
+Aplikasi manajemen pengeluaran personal dan digitalisasi bukti transaksi berbasis web. **ExpenseLog** dirancang untuk mencatat arus kas secara instan melalui pemindaian foto struk kasir, verifikasi mandiri, pemantauan batas anggaran bulanan, sistem multi-user dengan isolasi data akun, serta penyimpanan data cloud persisten.
 
 ---
 
 ## Fitur Utama
 
+- **Sistem Akun & Multi-User:** Registrasi dan login aman mandiri; data transaksi serta konfigurasi anggaran terisolasi penuh per pengguna.
 - **Digitalisasi Bukti Bayar:** Memindai foto struk kasir secara langsung melalui kamera perangkat atau unggahan berkas (PNG/JPG/JPEG).
 - **Ekstraksi Data Terstruktur:** Mengekstrak nama entitas (merchant), tanggal transaksi, total nominal, kategori belanja, hingga perincian item secara otomatis.
 - **Validasi Data (Human-in-the-Loop):** Formulir verifikasi sebelum data disimpan permanen ke basis data.
-- **Manajemen Parameter Anggaran:** Menetapkan batas anggaran bulanan fleksibel yang tersimpan permanen di cloud.
-- **Analisis Tren & Riwayat:** Visualisasi riwayat transaksi harian, agregasi total belanja bulanan, dan ekspor data dalam format CSV.
-- **Penyimpanan Persisten (Turso Cloud):** Terintegrasi dengan database LibSQL/Turso Cloud sehingga data tidak hilang saat server melakukan restart atau hibernasi.
+- **Manajemen Parameter Anggaran:** Menetapkan batas anggaran bulanan fleksibel yang tersimpan permanen di cloud per akun.
+- **Log & Analisis Transaksi:** Visualisasi tren pengeluaran harian, agregasi total belanja bulanan, evaluasi ringkasan finansial, dan ekspor data dalam format CSV.
+- **Penyimpanan Persisten (Turso Cloud):** Terintegrasi dengan database LibSQL/Turso Cloud via protokol HTTPS yang stabil sehingga data tidak hilang saat server melakukan restart atau hibernasi.
 
 ---
 
@@ -21,6 +22,7 @@ Aplikasi manajemen pengeluaran personal dan digitalisasi bukti transaksi berbasi
 - **Ekstraksi Dokumen:** Google Generative AI (Gemini Vision) via SDK `google-genai`
 - **Validasi Skema:** Pydantic
 - **Basis Data:** [Turso](https://turso.tech/) (LibSQL) dengan *fallback* lokal ke SQLite
+- **Autentikasi:** Hash SHA-256 bawaan
 - **Manipulasi Data & Grafik:** Pandas, Altair
 
 ---
@@ -31,7 +33,7 @@ Aplikasi manajemen pengeluaran personal dan digitalisasi bukti transaksi berbasi
 receipt-tracker/
 ├── assets/
 │   └── style.css          # Kustomisasi tema dan tampilan antarmuka
-├── app.py                 # Titik masuk utama aplikasi (Streamlit UI & kontrol alur)
+├── app.py                 # Titik masuk utama aplikasi (UI Auth & Transaksi)
 ├── db.py                  # Lapisan abstraksi basis data (Turso Cloud / SQLite)
 ├── tracker.py             # Logika ekstraksi dokumen dan skema Pydantic
 ├── requirements.txt       # Daftar dependensi pustaka Python

@@ -32,12 +32,13 @@ if "user" not in st.session_state:
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
 # ==========================================
 if not st.session_state.user:
-    st.markdown("### ExpenseLog")
-    st.caption("Pencatatan transaksi harian dan manajemen anggaran belanja.")
-    st.write("")
+    # Buat 3 kolom: kiri (kosong), tengah (konten form), kanan (kosong)
+    _, col_center, _ = st.columns([1, 1.2, 1])
 
-    col1, col2, _ = st.columns([1, 1, 1])
-    with col1:
+    with col_center:
+        st.markdown("<h2 style='text-align: center; margin-bottom: 0px;'>ExpenseLog</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 2rem;'>Pencatatan transaksi harian dan manajemen anggaran belanja.</p>", unsafe_allow_html=True)
+
         tab_login, tab_register = st.tabs(["Masuk", "Daftar Akun"])
 
         with tab_login:
@@ -45,7 +46,7 @@ if not st.session_state.user:
             with st.form("form_login"):
                 login_user = st.text_input("Username").strip()
                 login_pwd = st.text_input("Password", type="password")
-                btn_login = st.form_submit_button("Masuk", type="primary")
+                btn_login = st.form_submit_button("Masuk", type="primary", use_container_width=True)
 
                 if btn_login:
                     if not login_user or not login_pwd:
@@ -63,7 +64,7 @@ if not st.session_state.user:
             with st.form("form_register"):
                 reg_user = st.text_input("Buat Username").strip()
                 reg_pwd = st.text_input("Buat Password", type="password")
-                btn_reg = st.form_submit_button("Daftar Akun")
+                btn_reg = st.form_submit_button("Daftar Akun", use_container_width=True)
 
                 if btn_reg:
                     if not reg_user or not reg_pwd:
@@ -74,8 +75,7 @@ if not st.session_state.user:
                             st.success("Akun berhasil dibuat! Silakan masuk pada tab 'Masuk'.")
                         else:
                             st.error("Username sudah terdaftar. Gunakan username lain.")
-
-    st.stop()
+        st.stop()
 
 # ==========================================
 # HALAMAN UTAMA (SETELAH BERHASIL LOGIN)

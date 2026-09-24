@@ -115,7 +115,7 @@ st.markdown("### ExpenseLog")
 st.caption("Digitalisasi bukti bayar dan manajemen anggaran belanja.")
 st.write("")
 
-tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analitik Transaksi"])
+tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
 
 # --- TAB 1: INPUT STRUK ---
 with tab_input:

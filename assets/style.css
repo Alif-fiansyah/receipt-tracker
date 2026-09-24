@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.main .block-container {
+    animation: fadeIn 0.4s ease-out;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* Surface Card Minimalis */
+.metric-box {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.25rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-box:hover {
+    transform: translateY(-2px);
+    border-color: #58a6ff;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #f0f6fc;
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+/* Advisor Insight Card */
+.advisor-card {
+    background-color: #0d1117;
+    border-left: 4px solid #1f6feb;
+    border-top: 1px solid #30363d;
+    border-right: 1px solid #30363d;
+    border-bottom: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.advisor-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #58a6ff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+}
+
+.advisor-body {
+    font-size: 0.95rem;
+    color: #c9d1d9;
+    line-height: 1.5;
+}
+
+/* Button & Form */
+.stButton>button {
+    width: 100%;
+    border-radius: 6px;
+    font-weight: 500;
+    height: 2.75rem;
+    transition: all 0.2s ease;
+}
+
+button[data-baseweb="tab"] {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}

@@ -25,37 +25,17 @@ def init_db():
     client = get_client()
     if client:
         # Skema Turso Cloud
-        client.execute(
-            """
-            CREATE TABLE IF NOT EXISTS receipts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                merchant TEXT,
-                transaction_date TEXT,
-                total_amount REAL,
-                category TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        client.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
             )
-        """
-        )
-        client.execute(
-            """
-            CREATE TABLE IF NOT EXISTS receipt_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                receipt_id INTEGER,
-                item_name TEXT,
-                quantity INTEGER,
-                total_price REAL,
-                FOREIGN KEY (receipt_id) REFERENCES receipts(id)
-            )
-        """
-        )
-        client.close()
+        """)
     else:
         # Fallback ke SQLite lokal
         conn = sqlite3.connect(LOCAL_DB)
         cursor = conn.cursor()
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS receipts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 merchant TEXT,
@@ -64,10 +44,8 @@ def init_db():
                 category TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
-        cursor.execute(
-            """
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS receipt_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 receipt_id INTEGER,
@@ -76,11 +54,15 @@ def init_db():
                 total_price REAL,
                 FOREIGN KEY (receipt_id) REFERENCES receipts(id)
             )
-        """
-        )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
         conn.commit()
         conn.close()
-
 
 def save_receipt_data(data: dict) -> int:
     client = get_client()

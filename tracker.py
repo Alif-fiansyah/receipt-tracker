@@ -33,11 +33,9 @@ class ReceiptExtraction(BaseModel):
     items: list[ReceiptItem] = Field(description="Daftar item barang yang dibeli")
     total_amount: float = Field(description="Nominal akhir total pembayaran yang dibayarkan")
 
-
 def extract_receipt(image_input) -> dict:
     client = get_gemini_client()
 
-    # Pastikan berkas dikonversi ke bytes JPEG yang valid
     if isinstance(image_input, str):
         if not os.path.exists(image_input):
             raise FileNotFoundError(f"File gambar '{image_input}' tidak ditemukan.")
@@ -66,28 +64,39 @@ def extract_receipt(image_input) -> dict:
     5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
     """
 
-    daftar_model = ["gemini-3.8-flash"]
+    # Model utama dan alternatif jika sedang overload
+    kandidat_model = ["gemini-3.8-flash", "gemini-2.5-pro"]
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=ReceiptExtraction,
+        temperature=0.1,
+    )
+
     last_error = None
 
-    for nama_model in daftar_model:
-        try:
-            response = client.models.generate_content(
-                model=nama_model,
-                contents=[prompt, image_part],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=ReceiptExtraction,
-                    temperature=0.1,
-                ),
-            )
-            parsed_data = ReceiptExtraction.model_validate_json(response.text)
-            return parsed_data.model_dump()
-        except Exception as e:
-            last_error = e
-            time.sleep(1)
-            continue
+    for model_name in kandidat_model:
+        # Coba hingga 3 kali percobaan untuk setiap model jika server sibuk (503/429)
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[prompt, image_part],
+                    config=config,
+                )
+                parsed_data = ReceiptExtraction.model_validate_json(response.text)
+                return parsed_data.model_dump()
+            except Exception as e:
+                last_error = e
+                err_msg = str(e)
+                # Jika server sibuk atau limit sementara, tunggu sebentar lalu coba lagi
+                if "503" in err_msg or "429" in err_msg or "UNAVAILABLE" in err_msg:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                else:
+                    # Jika error model tidak ditemukan atau invalid, langsung ganti model
+                    break
 
-    raise RuntimeError(f"Gagal memproses struk: {last_error}")
+    raise RuntimeError(f"Gagal memproses struk setelah beberapa percobaan: {last_error}")
 
 
 scan_receipt_with_gemini = extract_receipt

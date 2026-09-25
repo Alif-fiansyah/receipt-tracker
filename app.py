@@ -71,7 +71,7 @@ if not st.session_state.get("current_user"):
     _, col_main, _ = st.columns([0.22, 0.56, 0.22])
 
     with col_main:
-        st.markdown('<div class="auth-hero-title">ExpenseLog.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-hero-title">ExpenseLog · Smart Financial Assistant</div>', unsafe_allow_html=True)
         st.markdown('<div class="auth-hero-sub">Platform cerdas pencatatan transaksi harian, automasi ekstraksi nota belanja berbasis AI, dan manajemen anggaran keuangan pribadi secara presisi.</div>', unsafe_allow_html=True)
 
         # 2. Form Autentikasi (Merah) di Tengah Atas
@@ -100,14 +100,13 @@ if not st.session_state.get("current_user"):
             with st.form("form_register"):
                 reg_user = st.text_input("Username Baru").strip()
                 reg_pwd = st.text_input("Password", type="password")
-                reg_budget = st.number_input("Target Anggaran Bulanan (Rp)", min_value=0, value=2500000, step=100000, format="%d")
                 btn_reg = st.form_submit_button("Daftar Akun", type="primary", use_container_width=True)
 
                 if btn_reg:
                     if not reg_user or not reg_pwd:
-                        st.warning("Semua kolom registrasi wajib diisi.")
+                        st.warning("Username dan Password wajib diisi.")
                     else:
-                        success = db.create_user(reg_user, reg_pwd, monthly_budget=float(reg_budget))
+                        success = db.create_user(reg_user, reg_pwd, monthly_budget=2500000.0)
                         if success:
                             st.success("Akun berhasil dibuat! Silakan beralih ke tab Masuk.")
                         else:

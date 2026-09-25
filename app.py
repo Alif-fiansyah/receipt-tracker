@@ -140,7 +140,7 @@ with tab_input:
         elif input_method == "Input Manual":
             st.session_state.active_image = None
             st.markdown("##### Catat Transaksi Tunai / Manual")
-            with st.form("form_manual_expense"):
+            with st.form("form_manual_expense", clear_on_submit=True):
                 m_merchant = st.text_input("Nama Merchant / Tempat", placeholder="Contoh: Burjo Rafa, Parkir, Warung Makan")
                 col_m1, col_m2 = st.columns(2)
                 with col_m1:
@@ -163,7 +163,8 @@ with tab_input:
                             "items": [{"item_name": m_item.strip() if m_item.strip() else m_merchant.strip(), "quantity": 1.0, "total_price": float(m_total)}],
                         }
                         r_id = db.save_receipt_data(manual_payload, user_id=user_id)
-                        st.success(f"Transaksi manual tersimpan! (ID: #{r_id})")
+                        st.toast(f"Transaksi berhasil disimpan! (ID: #{r_id})", icon="✅")
+                        st.session_state["manual_success_notif"] = f"Transaksi sebesar Rp{m_total:,.0f} di {m_merchant.strip()} berhasil dicatat! (ID: #{r_id})"
                         st.rerun()
 
 

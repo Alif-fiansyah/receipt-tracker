@@ -66,7 +66,7 @@ def extract_receipt(image_input) -> dict:
     5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
     """
 
-    daftar_model = ["gemini-2.5-flash"]
+    daftar_model = ["gemini-3.8-flash"]
     last_error = None
 
     for nama_model in daftar_model:
@@ -104,9 +104,9 @@ def generate_financial_advice(summary_text) -> str:
     """
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+        model="gemini-3.8-flash",
+        contents=prompt,
+    )
         return response.text.strip()
     except Exception as e:
         return f"Evaluasi gagal dimuat: {e}"

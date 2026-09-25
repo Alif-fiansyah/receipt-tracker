@@ -124,7 +124,36 @@ with tab_input:
 
     with col_input:
         st.markdown("##### Unggah Berkas Transaksi")
-        input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas"], horizontal=True)
+        input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
+
+        if input_method == "Input Manual":
+            st.session_state.active_image = None
+            with st.form("form_manual_expense"):
+                st.markdown("###### Catat Transaksi Tunai / Manual")
+                m_merchant = st.text_input("Nama Merchant / Tempat", placeholder="Contoh: Burjo Rafa, Parkir, Warung Makan")
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    m_date = st.date_input("Tanggal Transaksi")
+                with col_m2:
+                    m_cat = st.selectbox("Kategori", ["Makanan & Minuman", "Belanja Harian", "Transportasi", "Kebutuhan Pokok", "Hiburan", "Tagihan & Utilitas", "Lainnya"])
+                m_item = st.text_input("Deskripsi / Nama Item", placeholder="Contoh: Nasi Goreng + Es Teh")
+                m_total = st.number_input("Nominal (Rp)", min_value=0.0, step=1000.0)
+                if st.form_submit_button("Simpan Transaksi", use_container_width=True):
+                    if not m_merchant.strip():
+                        st.warning("Mohon isi nama merchant/tempat.")
+                    elif m_total <= 0:
+                        st.warning("Nominal transaksi harus lebih dari 0.")
+                    else:
+                        manual_payload = {
+                            "merchant": m_merchant.strip(),
+                            "transaction_date": str(m_date),
+                            "total_amount": float(m_total),
+                            "category": m_cat,
+                            "items": [{"item_name": m_item.strip() if m_item.strip() else m_merchant.strip(), "quantity": 1.0, "total_price": float(m_total)}],
+                        }
+                        r_id = db.save_receipt_data(manual_payload, user_id=user_id)
+                        st.success(f"Transaksi manual tersimpan! (ID: #{r_id})")
+                        st.rerun()
 
         if input_method == "Pindai Kamera":
             camera_img = st.camera_input("Ambil foto bukti bayar")

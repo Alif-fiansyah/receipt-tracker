@@ -66,7 +66,7 @@ def extract_receipt(image_input) -> dict:
     5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
     """
 
-    daftar_model = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    daftar_model = ["gemini-2.5-flash"]
     last_error = None
 
     for nama_model in daftar_model:

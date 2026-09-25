@@ -125,37 +125,40 @@ with tab_input:
         st.markdown("##### Unggah Berkas Transaksi")
         input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas"], horizontal=True)
 
-        image_data = None
         if input_method == "Pindai Kamera":
             camera_img = st.camera_input("Ambil foto bukti bayar")
-            if camera_img:
-                image_data = camera_img.getvalue()
+            if camera_img is not None:
+                st.session_state.active_image = camera_img.getvalue()
         else:
             uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png"])
-            if uploaded_file:
-                image_data = uploaded_file.getvalue()
+            if uploaded_file is not None:
+                st.session_state.active_image = uploaded_file.getvalue()
 
-        if image_data:
-            st.session_state.active_image = image_data
-
-        if "active_image" in st.session_state and st.session_state.active_image:
-            if st.button("Pindai Bukti Bayar", type="primary"):
+        if st.session_state.get("active_image"):
+            if st.button("Pindai Bukti Bayar", type="primary", use_container_width=True):
                 with st.spinner("Memproses digitalisasi dokumen..."):
-                    img = Image.open(io.BytesIO(st.session_state.active_image))
-                    result = tracker.extract_receipt(img)
-                    if result:
-                        st.session_state.temp_extracted_data = result
-                        st.success("Dokumen berhasil diekstraksi. Lakukan verifikasi di bawah.")
-                    else:
-                        st.error("Gagal membaca bukti bayar. Pastikan foto terbaca jelas.")
+                    try:
+                        # Buat stream baru dan pastikan pointer berada di byte ke-0
+                        image_stream = io.BytesIO(st.session_state.active_image)
+                        image_stream.seek(0)
+                        img = Image.open(image_stream)
+
+                        result = tracker.extract_receipt(img)
+                        if result:
+                            st.session_state.temp_extracted_data = result
+                            st.success("Dokumen berhasil diekstraksi. Lakukan verifikasi di bawah.")
+                        else:
+                            st.error("Gagal membaca bukti bayar. Pastikan foto terbaca jelas.")
+                    except Exception as err:
+                        st.error(f"Terjadi kesalahan: {err}")
 
     with col_preview:
-        if "active_image" in st.session_state and st.session_state.active_image:
+        if st.session_state.get("active_image"):
             st.markdown("##### Pratinjau Dokumen")
             st.image(st.session_state.active_image, use_container_width=True)
 
     # Human-in-the-Loop Verification Form
-    if "temp_extracted_data" in st.session_state and st.session_state.temp_extracted_data:
+    if st.session_state.get("temp_extracted_data"):
         st.divider()
         st.markdown("##### Verifikasi & Konfirmasi Data")
         data = st.session_state.temp_extracted_data
@@ -174,7 +177,7 @@ with tab_input:
                 items_df = pd.DataFrame(data["items"])
                 st.dataframe(items_df, use_container_width=True)
 
-            btn_confirm = st.form_submit_button("Simpan ke Basis Data", type="primary")
+            btn_confirm = st.form_submit_button("Simpan ke Basis Data", type="primary", use_container_width=True)
 
             if btn_confirm:
                 final_payload = {
@@ -189,7 +192,7 @@ with tab_input:
                 st.session_state.temp_extracted_data = None
                 st.session_state.active_image = None
                 st.rerun()
-
+                
 # --- TAB 2: LOG & ANALITIK ---
 with tab_history:
     raw_data = db.get_all_receipts(user_id=user_id)

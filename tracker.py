@@ -1,5 +1,7 @@
 import io
+import json
 import os
+import re
 import sys
 import time
 from dotenv import load_dotenv
@@ -21,9 +23,17 @@ load_dotenv()
 
 
 def get_gemini_client():
+    # Cek kunci di st.secrets jika berjalan di Streamlit Cloud, fallback ke os.getenv
     current_key = os.getenv("GEMINI_API_KEY")
     if not current_key:
-        raise ValueError("GEMINI_API_KEY belum disetel!")
+        try:
+            import streamlit as st
+            current_key = st.secrets.get("GEMINI_API_KEY")
+        except Exception:
+            pass
+
+    if not current_key:
+        raise ValueError("GEMINI_API_KEY belum disetel di environment atau Streamlit Secrets!")
     return genai.Client(api_key=current_key)
 
 
@@ -34,11 +44,19 @@ class ReceiptItem(BaseModel):
 
 
 class ReceiptExtraction(BaseModel):
-    merchant: str = Field(description="Nama toko, minimarket, resto, kafe, atau merchant")
-    transaction_date: str = Field(description="Tanggal transaksi format YYYY-MM-DD. Jika tidak terlihat, gunakan tanggal hari ini.")
+    merchant: str = Field(description="Nama toko, minimarket, resto, kafe, atau tujuan transfer/QRIS")
+    transaction_date: str = Field(description="Tanggal transaksi format YYYY-MM-DD")
     category: str = Field(description="Pilih salah satu: Makanan & Minuman, Belanja Harian, Transportasi, Hiburan, Tagihan & Utilitas, atau Lainnya")
     items: list[ReceiptItem] = Field(description="Daftar item barang yang dibeli")
     total_amount: float = Field(description="Nominal akhir total pembayaran yang dibayarkan")
+
+
+def clean_json_text(raw_text: str) -> str:
+    """Membersihkan markdown fences ```json ... ``` dari respons AI."""
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw_text.strip(), flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned.strip())
+    return cleaned.strip()
+
 
 def extract_receipt(image_input) -> dict:
     client = get_gemini_client()
@@ -50,21 +68,21 @@ def extract_receipt(image_input) -> dict:
     else:
         img = image_input
 
-    # 1. Tangani mode warna iPhone (RGBA / P3) agar tidak error saat disimpan ke JPEG
+    # 1. Konversi mode warna agar aman ke format JPEG
     if img.mode in ("RGBA", "LA", "P"):
         img = img.convert("RGBA")
         background = Image.new("RGB", img.size, (255, 255, 255))
-        background.paste(img, mask=img.split()[-1])  # Pakai alpha channel sebagai mask
+        background.paste(img, mask=img.split()[-1])
         img = background
     elif img.mode != "RGB":
         img = img.convert("RGB")
 
-    # 2. Perkecil resolusi jika terlalu besar (kamera/screenshot iPhone biasanya 3000-4000px)
+    # 2. Resize proporsional agar hemat token & bandwidth
     max_dim = 1600
     if max(img.size) > max_dim:
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
 
-    # 3. Kompresi ke JPEG dengan kualitas optimal
+    # 3. Kompresi JPEG
     buffered = io.BytesIO()
     img.save(buffered, format="JPEG", quality=85, optimize=True)
     img_bytes = buffered.getvalue()
@@ -72,46 +90,56 @@ def extract_receipt(image_input) -> dict:
     image_part = types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
 
     prompt = """
-    Kamu adalah sistem OCR dan ekstraksi struk pengeluaran otomatis.
-    Tugasmu adalah menganalisis foto struk/nota pembayaran ini secara presisi.
+    Kamu adalah sistem OCR dan analisis bukti bayar otomatis (struk belanja fisik maupun tangkapan layar m-banking / QRIS).
+    Ekstrak informasi dari gambar ke format JSON murni sesuai skema berikut:
+    {
+      "merchant": "Nama penerima, merchant, toko, atau kafe",
+      "transaction_date": "YYYY-MM-DD",
+      "category": "Makanan & Minuman | Belanja Harian | Transportasi | Hiburan | Tagihan & Utilitas | Lainnya",
+      "items": [
+        {"item_name": "Nama item atau transaksi", "quantity": 1.0, "total_price": 0.0}
+      ],
+      "total_amount": 0.0
+    }
 
     Aturan:
-    1. Ambil nama toko (merchant) dengan jelas.
-    2. Identifikasi tanggal transaksi (formatkan ke YYYY-MM-DD).
-    3. Klasifikasikan pengeluaran ke dalam kategori yang paling tepat.
-    4. Ekstrak nama item dan harganya. Jika struk terpotong atau tidak ada rincian item, masukkan 1 item representatif.
-    5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
+    1. Pastikan total_amount dan total_price berupa angka (float/integer), jangan sertakan simbol mata uang atau titik ribuan.
+    2. Jika tanggal berupa format teks (misal '25 Sep 2026'), konversikan ke angka '2026-09-25'.
+    3. Jika rincian item belanja tidak tertulis satuan (misal pada bukti transfer QRIS), isi 1 item dengan item_name sesuai tujuan transaksi dan total_price sama dengan total_amount.
+    4. Kembalikan HANYA teks JSON valid tanpa tambahan penjelasan lain.
     """
 
-    kandidat_model = ["gemini-3.8-flash", "gemini-2.5-pro"]
+    kandidat_model = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=ReceiptExtraction,
         temperature=0.1,
     )
 
     last_error = None
 
     for model_name in kandidat_model:
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 response = client.models.generate_content(
                     model=model_name,
                     contents=[prompt, image_part],
                     config=config,
                 )
-                parsed_data = ReceiptExtraction.model_validate_json(response.text)
-                return parsed_data.model_dump()
+                raw_json = clean_json_text(response.text)
+                data_dict = json.loads(raw_json)
+
+                # Validasi format dengan Pydantic
+                validated = ReceiptExtraction.model_validate(data_dict)
+                return validated.model_dump()
             except Exception as e:
                 last_error = e
                 err_msg = str(e)
-                if "503" in err_msg or "429" in err_msg or "UNAVAILABLE" in err_msg:
+                if any(k in err_msg for k in ["503", "429", "UNAVAILABLE", "ResourceExhausted"]):
                     time.sleep(2 * (attempt + 1))
                     continue
-                else:
-                    break
+                break
 
-    raise RuntimeError(f"Gagal memproses struk setelah beberapa percobaan: {last_error}")
+    raise RuntimeError(f"Gagal memproses struk: {last_error}")
 
 scan_receipt_with_gemini = extract_receipt
 
@@ -127,9 +155,9 @@ def generate_financial_advice(summary_text) -> str:
     """
     try:
         response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-    )
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
         return response.text.strip()
     except Exception as e:
         return f"Evaluasi gagal dimuat: {e}"

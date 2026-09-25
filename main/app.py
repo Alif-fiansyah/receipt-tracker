@@ -85,36 +85,71 @@ user_id = current_user["id"]
 
 # Sidebar Navigasi & Informasi User
 with st.sidebar:
-    st.markdown(f"**Akun:** `{current_user['username']}`")
-    if st.button("Keluar (Logout)"):
-        st.session_state.user = None
-        st.session_state.temp_extracted_data = None
-        st.session_state.active_image = None
+    st.markdown(
+        f"""
+        <div style="background: rgba(255,255,255,0.05); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px;">
+            <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Akun Masuk</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: #f0f2f6; margin-top: 2px;">👤 {st.session_state.username}</div>
+            <div style="display: inline-block; margin-top: 6px; padding: 2px 8px; font-size: 0.7rem; font-weight: 600; background: #ff4b4b22; color: #ff4b4b; border-radius: 4px; border: 1px solid #ff4b4b44;">
+                PRO PLAN
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("Keluar (Logout)", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_id = None
+        st.session_state.username = None
         st.rerun()
 
     st.divider()
-    st.markdown("#### Parameter Anggaran")
-    current_budget = db.get_budget(user_id, default_val=3000000.0)
 
+    st.markdown("##### 🎯 Target & Anggaran")
+    saved_budget = db.get_user_budget(user_id) if hasattr(db, "get_user_budget") else 2500000.0
     monthly_budget = st.number_input(
         "Batas Anggaran Bulanan (Rp):",
-        min_value=100000,
-        max_value=100000000,
-        value=int(current_budget),
-        step=250000,
+        min_value=0,
+        value=int(saved_budget),
+        step=100000,
+        help="Batas anggaran ini tersimpan khusus untuk akun Anda.",
     )
 
-    if monthly_budget != int(current_budget):
-        db.set_budget(user_id, float(monthly_budget))
-        st.success("Anggaran diperbarui!")
-        st.rerun()
+    if hasattr(db, "set_user_budget") and monthly_budget != saved_budget:
+        db.set_user_budget(user_id, monthly_budget)
 
-    st.caption("Batas anggaran ini tersimpan khusus untuk akun Anda.")
+    user_txs = db.get_user_transactions(user_id) if hasattr(db, "get_user_transactions") else []
+    total_spent = sum(t.get("total_amount", 0) for t in user_txs)
 
-# Header
-st.markdown("### ExpenseLog")
-st.caption("Digitalisasi bukti bayar dan manajemen anggaran belanja.")
-st.write("")
+    if monthly_budget > 0:
+        ratio = min(total_spent / monthly_budget, 1.0)
+        st.progress(ratio)
+        sisa = monthly_budget - total_spent
+
+        col_side1, col_side2 = st.columns(2)
+        with col_side1:
+            st.caption("Terpakai")
+            st.write(f"**Rp{total_spent:,.0f}**")
+        with col_side2:
+            st.caption("Sisa Saldo")
+            color = "#00e676" if sisa >= 0 else "#ff5252"
+            st.markdown(f"<span style='color: {color}; font-weight: bold;'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("##### 📁 Cadangan Data")
+    if user_txs:
+        df_export = pd.DataFrame(user_txs)
+        csv_data = df_export.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="Unduh Riwayat (.CSV)",
+            data=csv_data,
+            file_name=f"transaksi_{st.session_state.username}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
 
 tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
 

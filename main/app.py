@@ -123,13 +123,24 @@ with tab_input:
     col_input, col_preview = st.columns([1, 1], gap="medium")
 
     with col_input:
-        st.markdown("##### Unggah Berkas Transaksi")
         input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
 
-        if input_method == "Input Manual":
+        if input_method == "Pindai Kamera":
+            st.markdown("##### Pindai Kamera")
+            camera_img = st.camera_input("Ambil foto bukti bayar")
+            if camera_img is not None:
+                st.session_state.active_image = camera_img.getvalue()
+
+        elif input_method == "Unggah Berkas":
+            st.markdown("##### Unggah Berkas Transaksi")
+            uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png", "heic", "heif"])
+            if uploaded_file is not None:
+                st.session_state.active_image = uploaded_file.getvalue()
+
+        elif input_method == "Input Manual":
             st.session_state.active_image = None
+            st.markdown("##### Catat Transaksi Tunai / Manual")
             with st.form("form_manual_expense"):
-                st.markdown("###### Catat Transaksi Tunai / Manual")
                 m_merchant = st.text_input("Nama Merchant / Tempat", placeholder="Contoh: Burjo Rafa, Parkir, Warung Makan")
                 col_m1, col_m2 = st.columns(2)
                 with col_m1:
@@ -155,34 +166,7 @@ with tab_input:
                         st.success(f"Transaksi manual tersimpan! (ID: #{r_id})")
                         st.rerun()
 
-        if input_method == "Pindai Kamera":
-            camera_img = st.camera_input("Ambil foto bukti bayar")
-            if camera_img is not None:
-                st.session_state.active_image = camera_img.getvalue()
-        else:
-            uploaded_file = st.file_uploader(
-                "Pilih gambar...", 
-                type=["jpg", "jpeg", "png", "heic", "heif"]
-            )
-            if uploaded_file is not None:
-                st.session_state.active_image = uploaded_file.getvalue()
 
-        if st.session_state.get("active_image"):
-            if st.button("Pindai Bukti Bayar", type="primary", use_container_width=True):
-                with st.spinner("Memproses digitalisasi dokumen..."):
-                    try:
-                        image_stream = io.BytesIO(st.session_state.active_image)
-                        image_stream.seek(0)
-                        img = Image.open(image_stream)
-
-                        result = tracker.extract_receipt(img)
-                        if result:
-                            st.session_state.temp_extracted_data = result
-                            st.success("Dokumen berhasil diekstraksi. Lakukan verifikasi di bawah.")
-                        else:
-                            st.warning("Data struk tidak terbaca lengkap. Pastikan foto jelas dan pencahayaan cukup.")
-                    except Exception as err:
-                        st.error(f"Gagal memproses bukti bayar: {err}")
 
     with col_preview:
         if st.session_state.get("active_image"):

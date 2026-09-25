@@ -138,26 +138,6 @@ with st.sidebar:
         ratio = min(total_spent / monthly_budget, 1.0)
         st.progress(ratio)
         sisa = monthly_budget - total_spent
-        pct = (total_spent / monthly_budget) * 100
-
-        badge_bg = "rgba(46, 160, 67, 0.15)" if pct <= 75 else ("rgba(210, 153, 34, 0.15)" if pct <= 95 else "rgba(248, 81, 73, 0.15)")
-        badge_fg = "#3fb950" if pct <= 75 else ("#d29922" if pct <= 95 else "#f85149")
-
-                        # Hitung pengeluaran khusus hari ini
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        today_spent = sum(t.get("total_amount", 0) for t in user_txs if str(t.get("transaction_date", "")).startswith(today_str))
-
-        st.markdown(
-            f"""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 10px; padding: 6px 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                <span style="font-size: 0.75rem; color: #8b949e;">Belanja Hari Ini</span>
-                <span style="font-size: 0.82rem; font-weight: 600; color: #e6edf3;">
-                    Rp{today_spent:,.0f}
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
         col_s1, col_s2 = st.columns(2)
         with col_s1:
@@ -401,10 +381,60 @@ with tab_history:
 
         st.divider()
 
-        # 5. Analisis AI Finansial
-        st.markdown("##### Analisis Pengeluaran")
-        if st.button("Analisis Ringkasan Finansial"):
-            with st.spinner("Menganalisis catatan pengeluaran..."):
-                advice = tracker.generate_financial_advice(df.to_dict(orient="records"))
-                st.markdown(advice)
+                # 5. Financial AI Advisor Interaktif
+        st.markdown("##### Konsultan Keuangan AI")
+        st.caption("Dapatkan evaluasi pengeluaran instan dan saran taktis dari catatan transaksi Anda.")
+
+        if "ai_advice_result" not in st.session_state:
+            st.session_state.ai_advice_result = None
+
+        col_q1, col_q2, col_q3 = st.columns(3)
+        ask_trigger = False
+        query_context = ""
+
+        with col_q1:
+            if st.button("Di mana paling boros?", use_container_width=True):
+                query_context = "Analisis di kategori dan pos belanja mana pengguna paling boros, serta berikan rekomendasi penghematannya."
+                ask_trigger = True
+        with col_q2:
+            if st.button("Tips sisa anggaran", use_container_width=True):
+                query_context = f"Dengan sisa anggaran Rp{remaining_budget:,.0f} dan total belanja Rp{total_spent:,.0f}, berikan langkah taktis agar keuangan bertahan sampai akhir bulan."
+                ask_trigger = True
+        with col_q3:
+            if st.button("Ringkasan gaya hidup", use_container_width=True):
+                query_context = "Evaluasi pola gaya hidup pengguna berdasarkan waktu belanja, merchant yang sering dikunjungi, dan frekuensi transaksi."
+                ask_trigger = True
+
+        custom_query = st.text_input("Atau ajukan pertanyaan spesifik tentang riwayat pengeluaran Anda:", placeholder="Contoh: Apakah pengeluaran makan saya wajar?")
+        if st.button("Tanyakan ke AI", type="secondary"):
+            if custom_query.strip():
+                query_context = custom_query.strip()
+                ask_trigger = True
+            else:
+                st.warning("Silakan ketik pertanyaan terlebih dahulu.")
+
+        if ask_trigger and query_context:
+            with st.spinner("AI sedang menganalisis data riwayat transaksi Anda..."):
+                try:
+                    records = df.to_dict(orient="records")
+                    if hasattr(tracker, "generate_custom_advice"):
+                        response = tracker.generate_custom_advice(records, query_context)
+                    else:
+                        response = tracker.generate_financial_advice(records)
+                    st.session_state.ai_advice_result = response
+                except Exception as e:
+                    st.session_state.ai_advice_result = f"Gagal menghasilkan analisis: {e}"
+
+        if st.session_state.ai_advice_result:
+            st.markdown(
+                f"""
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 16px; margin-top: 14px;">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: #58a6ff; margin-bottom: 8px;">Rekomendasi AI:</div>
+                    <div style="font-size: 0.88rem; color: #e6edf3; line-height: 1.6;">
+                        {st.session_state.ai_advice_result}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 

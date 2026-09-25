@@ -125,8 +125,11 @@ with st.sidebar:
         min_value=0,
         value=int(saved_budget),
         step=100000,
+        format="%d",
         label_visibility="collapsed",
+        help=f"Nilai saat ini: Rp {int(saved_budget):,}"
     )
+    st.caption(f"Nominal: **Rp {int(monthly_budget):,}**")
 
     if hasattr(db, "set_user_budget") and monthly_budget != saved_budget:
         db.set_user_budget(user_id, monthly_budget)
@@ -156,8 +159,10 @@ with st.sidebar:
             min_value=0,
             value=500000,
             step=50000,
+            format="%d",
             help="Jumlah uang yang ingin Anda amankan/tabung bulan ini."
         )
+        st.caption(f"Nominal: **Rp {int(target_tabungan):,}**")
         anggaran_bersih = max(monthly_budget - target_tabungan, 0)
         st.markdown(
             f"""

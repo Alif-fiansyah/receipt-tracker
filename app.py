@@ -153,7 +153,7 @@ with tab_input:
                         else:
                             st.warning("Data struk tidak terbaca lengkap. Pastikan foto jelas dan pencahayaan cukup.")
                     except Exception as err:
-                        st.error(f"DEBUG ERROR ASLI: {err}")
+                        st.error(f"Gagal memproses bukti bayar: {err}")
 
     with col_preview:
         if st.session_state.get("active_image"):

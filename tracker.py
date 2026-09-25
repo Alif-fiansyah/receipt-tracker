@@ -13,10 +13,14 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    print("[-] Error: GEMINI_API_KEY belum diatur di file .env")
-    sys.exit(1)
+    # Jangan langsung crash sys.exit agar Streamlit Cloud tidak putus koneksi jika env terlambat dimuat
+    pass
 
-client = genai.Client(api_key=api_key)
+def get_gemini_client():
+    current_key = os.getenv("GEMINI_API_KEY")
+    if not current_key:
+        raise ValueError("GEMINI_API_KEY belum disetel!")
+    return genai.Client(api_key=current_key)
 
 
 # Definisi Skema Data Ekstraksi Struk
@@ -34,11 +38,16 @@ class ReceiptExtraction(BaseModel):
     total_amount: float = Field(description="Nominal akhir total pembayaran yang dibayarkan")
 
 
-def scan_receipt_with_gemini(image_path: str) -> ReceiptExtraction:
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"File gambar '{image_path}' tidak ditemukan.")
+def extract_receipt(image_input) -> dict:
+    """Menerima path berkas string atau objek PIL Image langsung dari Streamlit."""
+    client = get_gemini_client()
 
-    image = Image.open(image_path)
+    if isinstance(image_input, str):
+        if not os.path.exists(image_input):
+            raise FileNotFoundError(f"File gambar '{image_input}' tidak ditemukan.")
+        image = Image.open(image_input)
+    else:
+        image = image_input
 
     prompt = """
     Kamu adalah sistem OCR dan ekstraksi struk pengeluaran otomatis.
@@ -52,12 +61,11 @@ def scan_receipt_with_gemini(image_path: str) -> ReceiptExtraction:
     5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
     """
 
-    daftar_model = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
+    daftar_model = ["gemini-2.5-flash", "gemini-2.0-flash"]
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=ReceiptExtraction,
         temperature=0.1,
-        tools=[],
     )
 
     for nama_model in daftar_model:
@@ -67,7 +75,9 @@ def scan_receipt_with_gemini(image_path: str) -> ReceiptExtraction:
                 contents=[prompt, image],
                 config=config,
             )
-            return ReceiptExtraction.model_validate_json(response.text)
+            # Kembalikan dict agar cocok dengan pemrosesan session_state di app.py
+            parsed_data = ReceiptExtraction.model_validate_json(response.text)
+            return parsed_data.model_dump()
         except Exception as e:
             if "503" in str(e) or "404" in str(e):
                 time.sleep(1)
@@ -75,6 +85,29 @@ def scan_receipt_with_gemini(image_path: str) -> ReceiptExtraction:
             raise e
 
     raise RuntimeError("Layanan Gemini sedang sibuk, coba beberapa saat lagi.")
+
+
+# Alias untuk menjaga kompatibilitas CLI terminal lama
+scan_receipt_with_gemini = extract_receipt
+
+
+def generate_financial_advice(summary_text) -> str:
+    """Menganalisis pola pengeluaran dan memberikan rekomendasi finansial singkat."""
+    client = get_gemini_client()
+    prompt = f"""
+    Kamu adalah Financial Advisor profesional. Analisis ringkasan data transaksi pengeluaran berikut:
+    {summary_text}
+
+    Berikan 2 sampai 3 kalimat evaluasi finansial yang tajam, objektif, dan actionable dalam bahasa Indonesia formal tanpa basa-basi atau emoji berlebihan.
+    """
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        return response.text.strip()
+    except Exception as e:
+        return f"Evaluasi gagal dimuat: {e}"
 
 
 def main():
@@ -93,42 +126,21 @@ def main():
     print(f"\n[*] Membaca dan menganalisis struk: {path_gambar} ...")
 
     try:
-        hasil = scan_receipt_with_gemini(path_gambar)
+        hasil = extract_receipt(path_gambar)
     except Exception as err:
         print(f"[-] Gagal mengekstrak struk: {err}")
         return
 
     print("\n✅ Ekstraksi Berhasil!")
-    print(f"- Toko / Merchant : {hasil.merchant}")
-    print(f"- Tanggal         : {hasil.transaction_date}")
-    print(f"- Kategori        : {hasil.category}")
-    print(f"- Total Bayar     : Rp {hasil.total_amount:,.2f}")
+    print(f"- Toko / Merchant : {hasil['merchant']}")
+    print(f"- Tanggal         : {hasil['transaction_date']}")
+    print(f"- Kategori        : {hasil['category']}")
+    print(f"- Total Bayar     : Rp {hasil['total_amount']:,.2f}")
 
     print("\n[Rincian Belanja]")
-    for item in hasil.items:
-        print(f"  • {item.item_name} (x{item.quantity}) - Rp {item.total_price:,.2f}")
-
-    # Simpan ke SQLite
-    receipt_id = db.save_receipt_data(hasil.model_dump())
-    print(f"\n[+] Berhasil tersimpan ke database SQLite (ID Transaksi: {receipt_id})")
+    for item in hasil.get("items", []):
+        print(f"  • {item['item_name']} (x{item['quantity']}) - Rp {item['total_price']:,.2f}")
 
 
 if __name__ == "__main__":
     main()
-
-def generate_financial_advice(summary_text: str) -> str:
-    """Menganalisis pola pengeluaran dan memberikan rekomendasi finansial singkat."""
-    prompt = f"""
-    Kamu adalah Financial Advisor profesional. Analisis ringkasan data transaksi pengeluaran berikut:
-    {summary_text}
-
-    Berikan 2 sampai 3 kalimat evaluasi finansial yang tajam, objektif, dan actionable dalam bahasa Indonesia formal tanpa basa-basi atau emoji berlebihan.
-    """
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt,
-        )
-        return response.text.strip()
-    except Exception as e:
-        return f"Evaluasi gagal dimuat: {e}"

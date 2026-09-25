@@ -179,7 +179,7 @@ with st.sidebar:
 # Wadah Konten Utama Terpusat
 _, col_center, _ = st.columns([0.18, 0.64, 0.18])
 with col_center:
-    tab_input, tab_history = st.tabs(["Catat Transaksi", "Log & Analisis Transaksi"])
+    tab_input, tab_history, tab_budget = st.tabs(["Catat Transaksi", "Log & Analisis Transaksi", "Kantong Anggaran"])
 
 # --- TAB 1: INPUT STRUK ---
 with tab_input:
@@ -451,4 +451,89 @@ with tab_history:
                 """,
                 unsafe_allow_html=True
             )
+
+
+# --- TAB 3: ALOKASI & KANTONG ANGGARAN ---
+with tab_budget:
+    st.markdown("##### Alokasi Anggaran per Kategori")
+    st.caption("Bagi pagu bulanan Anda ke masing-masing pos pengeluaran untuk mencegah defisit anggaran.")
+
+    # Ambil transaksi user untuk kalkulasi per kategori
+    raw_data_b = db.get_all_receipts(user_id=user_id) if hasattr(db, "get_all_receipts") else []
+    cat_spent_map = {}
+    for r in raw_data_b:
+        if len(r) > 4:
+            c = r[4] or "Lainnya"
+            nom = r[3] or 0.0
+            cat_spent_map[c] = cat_spent_map.get(c, 0.0) + nom
+
+    default_categories = [
+        "Makanan & Minuman",
+        "Belanja Harian",
+        "Transportasi",
+        "Kebutuhan Pokok",
+        "Hiburan",
+        "Tagihan & Utilitas",
+        "Lainnya"
+    ]
+
+    if "category_budgets" not in st.session_state:
+        st.session_state.category_budgets = {
+            "Makanan & Minuman": 1000000,
+            "Belanja Harian": 500000,
+            "Transportasi": 300000,
+            "Tagihan & Utilitas": 400000,
+            "Hiburan": 200000,
+            "Kebutuhan Pokok": 100000,
+            "Lainnya": 0
+        }
+
+    # Layout kartu alokasi kantong
+    cols_envelope = st.columns(2, gap="medium")
+    for idx, category_name in enumerate(default_categories):
+        target_col = cols_envelope[idx % 2]
+        with target_col:
+            current_allocated = st.session_state.category_budgets.get(category_name, 0)
+            spent = cat_spent_map.get(category_name, 0.0)
+            
+            with st.container():
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-weight: 600; font-size: 0.9rem; color: #f0f2f6;">{category_name}</span>
+                            <span style="font-size: 0.75rem; color: #8b949e;">Terpakai: Rp{spent:,.0f}</span>
+                        </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                new_alloc = st.number_input(
+                    f"Pagu {category_name}",
+                    min_value=0,
+                    value=int(current_allocated),
+                    step=50000,
+                    format="%d",
+                    key=f"input_alloc_{category_name}",
+                    label_visibility="collapsed"
+                )
+                st.session_state.category_budgets[category_name] = new_alloc
+                
+                ratio = min(spent / new_alloc, 1.0) if new_alloc > 0 else (1.0 if spent > 0 else 0.0)
+                st.progress(ratio)
+                
+                sisa_kantong = new_alloc - spent
+                status_color = "#3fb950" if sisa_kantong >= 0 else "#f85149"
+                status_text = f"Sisa: Rp{sisa_kantong:,.0f}" if sisa_kantong >= 0 else f"Overbudget: Rp{abs(sisa_kantong):,.0f}"
+                
+                st.markdown(
+                    f"""
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 0.75rem;">
+                            <span style="color: #8b949e;">Pagu: Rp{new_alloc:,.0f}</span>
+                            <span style="font-weight: 600; color: {status_color};">{status_text}</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 

@@ -131,18 +131,22 @@ with st.sidebar:
     if hasattr(db, "set_user_budget") and monthly_budget != saved_budget:
         db.set_user_budget(user_id, monthly_budget)
 
-    user_txs = db.get_user_transactions(user_id) if hasattr(db, "get_user_transactions") else []
-    total_spent = sum(t.get("total_amount", 0) for t in user_txs)
+        # Sinkronisasi data riwayat transaksi dengan database utama
+    all_receipts = db.get_all_receipts(user_id=user_id) if hasattr(db, "get_all_receipts") else []
+    total_spent = sum(r[3] for r in all_receipts if len(r) > 3 and r[3] is not None)
+    sisa = monthly_budget - total_spent
+    ratio = min(total_spent / monthly_budget, 1.0) if monthly_budget > 0 else 0.0
 
-    if monthly_budget > 0:
-        ratio = min(total_spent / monthly_budget, 1.0)
-        st.progress(ratio)
-        sisa = monthly_budget - total_spent
+    st.progress(ratio)
 
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            st.caption("Terpakai")
-            st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: #e6edf3;'>Rp{total_spent:,.0f}</span>", unsafe_allow_html=True)
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        st.caption("Terpakai")
+        st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: #e6edf3;'>Rp{total_spent:,.0f}</span>", unsafe_allow_html=True)
+    with col_s2:
+        st.caption("Sisa Saldo")
+        sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
+        st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
         with col_s2:
             st.caption("Sisa Saldo")
             sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
@@ -292,11 +296,14 @@ with tab_history:
 
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-        # 2. Kontrol Filter
-        col_f1, col_f2 = st.columns([1, 2])
+                # 2. Kontrol Filter Lengkap (3 Kolom)
+        col_f1, col_f2, col_f3 = st.columns([1, 1, 1.5])
         with col_f1:
             time_filter = st.selectbox("Rentang Waktu", ["Semua Waktu", "30 Hari Terakhir", "7 Hari Terakhir"])
         with col_f2:
+            available_cats = ["Semua Kategori"] + sorted(list(df["Kategori"].dropna().unique()))
+            category_filter = st.selectbox("Kategori", available_cats)
+        with col_f3:
             search_query = st.text_input("Cari Merchant / Toko", placeholder="Ketik nama tempat...")
 
         # Terapkan Filter
@@ -307,6 +314,9 @@ with tab_history:
         elif time_filter == "30 Hari Terakhir":
             cutoff = pd.Timestamp.now() - pd.Timedelta(days=30)
             filtered_df = filtered_df[filtered_df["Tanggal_dt"] >= cutoff]
+
+        if category_filter != "Semua Kategori":
+            filtered_df = filtered_df[filtered_df["Kategori"] == category_filter]
 
         if search_query.strip():
             filtered_df = filtered_df[filtered_df["Merchant"].str.contains(search_query.strip(), case=False, na=False)]

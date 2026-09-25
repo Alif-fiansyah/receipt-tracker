@@ -44,15 +44,22 @@ if not st.session_state.get("current_user"):
     .auth-hero-title {
         font-size: 2.3rem;
         font-weight: 800;
-        line-height: 1.15;
+        text-align: center;
         background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+    }
+    .auth-hero-sub {
+        font-size: 0.92rem;
+        color: #8b949e;
+        text-align: center;
+        line-height: 1.5;
+        margin-bottom: 24px;
     }
     .auth-feature-card {
         padding: 12px 14px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         background: rgba(255, 255, 255, 0.02);
         border: 1px solid rgba(255, 255, 255, 0.07);
         border-radius: 8px;
@@ -60,28 +67,14 @@ if not st.session_state.get("current_user"):
     </style>
     """, unsafe_allow_html=True)
 
-    col_hero, col_gap, col_auth = st.columns([1.15, 0.1, 1.0])
+    # 1. Header Judul & Deskripsi Terpusat
+    _, col_main, _ = st.columns([0.22, 0.56, 0.22])
 
-    with col_hero:
+    with col_main:
         st.markdown('<div class="auth-hero-title">ExpenseLog.</div>', unsafe_allow_html=True)
-        st.markdown('<p style="font-size: 0.95rem; color: #8b949e; line-height: 1.5; margin-bottom: 22px;">Platform cerdas pencatatan transaksi harian, automasi ekstraksi nota belanja berbasis AI, dan manajemen anggaran keuangan pribadi secara presisi.</p>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-hero-sub">Platform cerdas pencatatan transaksi harian, automasi ekstraksi nota belanja berbasis AI, dan manajemen anggaran keuangan pribadi secara presisi.</div>', unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class="auth-feature-card">
-            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Ekstraksi Nota AI & OCR</div>
-            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Pindai struk fisik secara otomatis tanpa perlu mengetik ulang merchant, tanggal, dan nominal.</div>
-        </div>
-        <div class="auth-feature-card">
-            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Analitik Tren & Kategori</div>
-            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Visualisasi interaktif riwayat harian dan proporsi alokasi dana secara real-time.</div>
-        </div>
-        <div class="auth-feature-card">
-            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Financial AI Advisor</div>
-            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Evaluasi pola belanja terintegrasi untuk mencegah defisit anggaran bulanan Anda.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_auth:
+        # 2. Form Autentikasi (Merah) di Tengah Atas
         tab_login, tab_register = st.tabs(["Masuk", "Daftar Akun"])
         with tab_login:
             st.markdown("##### Masuk ke Akun Anda")
@@ -119,6 +112,24 @@ if not st.session_state.get("current_user"):
                             st.success("Akun berhasil dibuat! Silakan beralih ke tab Masuk.")
                         else:
                             st.error("Username sudah terdaftar. Gunakan username lain.")
+
+        st.divider()
+
+        # 3. Fitur Unggulan (Biru) di Tengah Bawah
+        st.markdown("""
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Ekstraksi Nota AI & OCR</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Pindai struk fisik secara otomatis tanpa perlu mengetik ulang merchant, tanggal, dan nominal.</div>
+        </div>
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Analitik Tren & Kategori</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Visualisasi interaktif riwayat harian dan proporsi alokasi dana secara real-time.</div>
+        </div>
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Financial AI Advisor</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Evaluasi pola belanja terintegrasi untuk mencegah defisit anggaran bulanan Anda.</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.stop()
 

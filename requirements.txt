@@ -52,10 +52,11 @@ uvicorn==0.53.0
 watchdog==6.0.0
 websockets==16.1.1
 streamlit
-google-genai
-pydantic
-pillow
 pandas
 altair
+pydantic
 python-dotenv
+google-genai
+pillow
+pillow-heif
 libsql-client

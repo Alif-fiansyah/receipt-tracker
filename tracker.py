@@ -8,6 +8,13 @@ from google.genai import types
 from PIL import Image
 from pydantic import BaseModel, Field
 
+# Registrasi dukungan format HEIC/HEIF dari kamera iPhone
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
+
 import db
 
 load_dotenv()

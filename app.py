@@ -1,8 +1,9 @@
+import io
 import streamlit as st
 import pandas as pd
 import altair as alt
 from PIL import Image
-import io
+
 import db
 import tracker
 
@@ -32,7 +33,6 @@ if "user" not in st.session_state:
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
 # ==========================================
 if not st.session_state.user:
-    # Buat 3 kolom: kiri (kosong), tengah (konten form), kanan (kosong)
     _, col_center, _ = st.columns([1, 1.2, 1])
 
     with col_center:
@@ -89,6 +89,7 @@ with st.sidebar:
     if st.button("Keluar (Logout)"):
         st.session_state.user = None
         st.session_state.temp_extracted_data = None
+        st.session_state.active_image = None
         st.rerun()
 
     st.divider()
@@ -130,7 +131,10 @@ with tab_input:
             if camera_img is not None:
                 st.session_state.active_image = camera_img.getvalue()
         else:
-            uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png"])
+            uploaded_file = st.file_uploader(
+                "Pilih gambar...", 
+                type=["jpg", "jpeg", "png", "heic", "heif"]
+            )
             if uploaded_file is not None:
                 st.session_state.active_image = uploaded_file.getvalue()
 
@@ -138,7 +142,6 @@ with tab_input:
             if st.button("Pindai Bukti Bayar", type="primary", use_container_width=True):
                 with st.spinner("Memproses digitalisasi dokumen..."):
                     try:
-                        # Buat stream baru dan pastikan pointer berada di byte ke-0
                         image_stream = io.BytesIO(st.session_state.active_image)
                         image_stream.seek(0)
                         img = Image.open(image_stream)
@@ -148,9 +151,15 @@ with tab_input:
                             st.session_state.temp_extracted_data = result
                             st.success("Dokumen berhasil diekstraksi. Lakukan verifikasi di bawah.")
                         else:
-                            st.error("Gagal membaca bukti bayar. Pastikan foto terbaca jelas.")
+                            st.warning("Data struk tidak terbaca lengkap. Pastikan foto jelas dan pencahayaan cukup.")
                     except Exception as err:
-                        st.error(f"Terjadi kesalahan: {err}")
+                        err_text = str(err)
+                        if "429" in err_text or "503" in err_text or "UNAVAILABLE" in err_text:
+                            st.warning("Server AI sedang sibuk memproses antrean. Tunggu sekitar 10-15 detik lalu klik tombol lagi.")
+                        elif "UnidentifiedImageError" in err_text:
+                            st.error("Format gambar tidak dikenali atau berkas rusak. Coba ambil ulang foto bukti bayar.")
+                        else:
+                            st.error("Gagal membaca bukti bayar. Pastikan foto fokus, tidak buram, dan teks struk terlihat jelas.")
 
     with col_preview:
         if st.session_state.get("active_image"):
@@ -192,7 +201,7 @@ with tab_input:
                 st.session_state.temp_extracted_data = None
                 st.session_state.active_image = None
                 st.rerun()
-                
+
 # --- TAB 2: LOG & ANALITIK ---
 with tab_history:
     raw_data = db.get_all_receipts(user_id=user_id)
@@ -205,7 +214,6 @@ with tab_history:
             columns=["ID", "Merchant", "Tanggal", "Nominal", "Kategori", "Waktu Simpan"],
         )
 
-        # Ringkasan Anggaran
         total_spent = df["Nominal"].sum()
         remaining_budget = monthly_budget - total_spent
         spent_percent = min(100.0, (total_spent / monthly_budget) * 100.0) if monthly_budget > 0 else 0.0
@@ -218,7 +226,6 @@ with tab_history:
         st.progress(spent_percent / 100.0)
         st.write("")
 
-        # Visualisasi Tren Pengeluaran Harian
         st.markdown("##### Tren Pengeluaran Harian")
         chart_df = df.groupby("Tanggal")["Nominal"].sum().reset_index()
         chart = (
@@ -235,11 +242,9 @@ with tab_history:
 
         st.divider()
 
-        # Tabel Riwayat Transaksi
         st.markdown("##### Tabel Riwayat Transaksi")
         st.dataframe(df, use_container_width=True)
 
-        # Tombol Download CSV
         csv_data = df.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="Unduh Log Transaksi (CSV)",
@@ -250,7 +255,6 @@ with tab_history:
 
         st.divider()
 
-        # Evaluasi Ringkasan
         st.markdown("##### Analisis Pengeluaran")
         if st.button("Analisis Ringkasan Finansial"):
             with st.spinner("Menganalisis catatan pengeluaran..."):

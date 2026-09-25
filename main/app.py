@@ -147,11 +147,6 @@ with st.sidebar:
         st.caption("Sisa Saldo")
         sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
         st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
-        with col_s2:
-            st.caption("Sisa Saldo")
-            sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
-            st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
-
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     st.caption("TARGET & ALOKASI TABUNGAN")
     

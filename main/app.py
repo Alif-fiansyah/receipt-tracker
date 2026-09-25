@@ -152,16 +152,35 @@ with st.sidebar:
         )
 
 
+st.markdown(
+    """
+    <style>
+    /* Pusatkan baris navigasi tab */
+    .stTabs [data-baseweb="tab-list"] {
+        justify-content: center;
+        gap: 24px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.05rem;
+        font-weight: 500;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
 
 # --- TAB 1: INPUT STRUK ---
 with tab_input:
-    input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
+    _, col_center, _ = st.columns([0.18, 0.64, 0.18])
+    with col_center:
+        input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
 
-    if input_method == "Input Manual":
-        st.session_state.active_image = None
-        _, col_center, _ = st.columns([0.18, 0.64, 0.18])
-        with col_center:
+        if input_method == "Input Manual":
+            st.session_state.active_image = None
             if "manual_success_notif" in st.session_state:
                 st.success(st.session_state.pop("manual_success_notif"))
             st.markdown("##### Catat Transaksi Tunai / Manual")
@@ -192,25 +211,21 @@ with tab_input:
                         st.session_state["manual_success_notif"] = f"Transaksi sebesar Rp{m_total:,.0f} di {m_merchant.strip()} berhasil dicatat! (ID: #{r_id})"
                         st.rerun()
 
-    else:
-        col_input, col_preview = st.columns([1, 1], gap="medium")
-        with col_input:
-            if input_method == "Pindai Kamera":
-                st.markdown("##### Pindai Kamera")
-                camera_img = st.camera_input("Ambil foto bukti bayar")
-                if camera_img is not None:
-                    st.session_state.active_image = camera_img.getvalue()
+        elif input_method == "Pindai Kamera":
+            st.markdown("##### Pindai Kamera")
+            camera_img = st.camera_input("Ambil foto bukti bayar")
+            if camera_img is not None:
+                st.session_state.active_image = camera_img.getvalue()
 
-            elif input_method == "Unggah Berkas":
-                st.markdown("##### Unggah Berkas Transaksi")
-                uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png", "heic", "heif"])
-                if uploaded_file is not None:
-                    st.session_state.active_image = uploaded_file.getvalue()
+        elif input_method == "Unggah Berkas":
+            st.markdown("##### Unggah Berkas Transaksi")
+            uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png", "heic", "heif"])
+            if uploaded_file is not None:
+                st.session_state.active_image = uploaded_file.getvalue()
 
-        with col_preview:
-            if st.session_state.get("active_image"):
-                st.markdown("##### Pratinjau Dokumen")
-                st.image(st.session_state.active_image, use_container_width=True)
+        if input_method in ["Pindai Kamera", "Unggah Berkas"] and st.session_state.get("active_image"):
+            st.markdown("##### Pratinjau Dokumen")
+            st.image(st.session_state.active_image, use_container_width=True)
 
     # Human-in-the-Loop Verification Form
     if st.session_state.get("temp_extracted_data"):

@@ -153,13 +153,7 @@ with tab_input:
                         else:
                             st.warning("Data struk tidak terbaca lengkap. Pastikan foto jelas dan pencahayaan cukup.")
                     except Exception as err:
-                        err_text = str(err)
-                        if "429" in err_text or "503" in err_text or "UNAVAILABLE" in err_text:
-                            st.warning("Server AI sedang sibuk memproses antrean. Tunggu sekitar 10-15 detik lalu klik tombol lagi.")
-                        elif "UnidentifiedImageError" in err_text:
-                            st.error("Format gambar tidak dikenali atau berkas rusak. Coba ambil ulang foto bukti bayar.")
-                        else:
-                            st.error("Gagal membaca bukti bayar. Pastikan foto fokus, tidak buram, dan teks struk terlihat jelas.")
+                        st.error(f"DEBUG ERROR ASLI: {err}")
 
     with col_preview:
         if st.session_state.get("active_image"):

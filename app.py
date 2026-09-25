@@ -82,6 +82,7 @@ if not st.session_state.user:
 # ==========================================
 current_user = st.session_state.user
 user_id = current_user["id"]
+username_display = current_user.get("username", st.session_state.get("username", "User"))
 
 # Sidebar Navigasi & Informasi User
 with st.sidebar:
@@ -89,7 +90,7 @@ with st.sidebar:
         f"""
         <div style="background: rgba(255,255,255,0.05); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px;">
             <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Akun Masuk</div>
-            <div style="font-size: 1.1rem; font-weight: 600; color: #f0f2f6; margin-top: 2px;">👤 {st.session_state.username}</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: #f0f2f6; margin-top: 2px;">👤 {username_display}</div>
             <div style="display: inline-block; margin-top: 6px; padding: 2px 8px; font-size: 0.7rem; font-weight: 600; background: #ff4b4b22; color: #ff4b4b; border-radius: 4px; border: 1px solid #ff4b4b44;">
                 PRO PLAN
             </div>
@@ -145,7 +146,7 @@ with st.sidebar:
         st.download_button(
             label="Unduh Riwayat (.CSV)",
             data=csv_data,
-            file_name=f"transaksi_{st.session_state.username}.csv",
+            file_name=f"transaksi_{username_display}.csv",
             mime="text/csv",
             use_container_width=True,
         )

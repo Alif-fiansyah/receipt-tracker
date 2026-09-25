@@ -109,7 +109,7 @@ def extract_receipt(image_input) -> dict:
     4. Kembalikan HANYA teks JSON valid tanpa tambahan penjelasan lain.
     """
 
-    kandidat_model = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    kandidat_model = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.0-flash"]
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
         temperature=0.1,
@@ -155,7 +155,7 @@ def generate_financial_advice(summary_text) -> str:
     """
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             contents=prompt,
         )
         return response.text.strip()

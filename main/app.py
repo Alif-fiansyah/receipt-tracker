@@ -18,6 +18,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+if "current_user" not in st.session_state:
+    st.session_state["current_user"] = None
+
+
 # Load tema/gaya kustom
 try:
     with open("assets/style.css") as f:
@@ -34,7 +38,7 @@ if "user" not in st.session_state:
 
 # ==========================================
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
-if not st.session_state.current_user:
+if not st.session_state.get("current_user"):
     st.markdown("""
     <style>
     .auth-hero-title {

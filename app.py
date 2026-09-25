@@ -1,3 +1,4 @@
+import calendar
 import io
 import streamlit as st
 import pandas as pd
@@ -140,12 +141,18 @@ with st.sidebar:
         badge_bg = "rgba(46, 160, 67, 0.15)" if pct <= 75 else ("rgba(210, 153, 34, 0.15)" if pct <= 95 else "rgba(248, 81, 73, 0.15)")
         badge_fg = "#3fb950" if pct <= 75 else ("#d29922" if pct <= 95 else "#f85149")
 
+                # Hitung sisa hari dalam bulan berjalan untuk Batas Harian Aman
+        now = datetime.now()
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
+        days_left = max(days_in_month - now.day + 1, 1)
+        safe_daily = max(sisa / days_left, 0) if sisa > 0 else 0
+
         st.markdown(
             f"""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; margin-bottom: 12px;">
-                <span style="font-size: 0.75rem; color: #8b949e;">Status Pemakaian</span>
-                <span style="font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: {badge_bg}; color: {badge_fg};">
-                    {pct:.1f}%
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 10px; padding: 6px 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <span style="font-size: 0.75rem; color: #8b949e;">Jatah Harian ({days_left} hari tersisa)</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: #58a6ff;">
+                    Rp{safe_daily:,.0f}/hari
                 </span>
             </div>
             """,
@@ -161,59 +168,28 @@ with st.sidebar:
             sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
             st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    st.caption("EKSPOR DATA")
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    st.caption("AKTIVITAS TERAKHIR")
     if user_txs:
-        df_export = pd.DataFrame(user_txs)
-        csv_data = df_export.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Unduh CSV Transaksi",
-            data=csv_data,
-            file_name=f"transaksi_{username_display}.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
+        # Ambil 3 transaksi paling baru
+        recent_txs = list(reversed(user_txs))[:3]
+        for tx in recent_txs:
+            merchant = tx.get("merchant", "Transaksi")
+            amount = tx.get("total_amount", 0)
+            st.markdown(
+                f"""
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 0.82rem; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">{merchant}</span>
+                    <span style="font-size: 0.82rem; font-weight: 600; color: #f85149;">-Rp{amount:,.0f}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     else:
-        st.caption("Belum ada data transaksi.")
+        st.caption("Belum ada pengeluaran.")
 
-
-
-# Pengaturan letak navigasi tab ke tengah
-st.markdown(
-    """
-    <style>
-    /* Pusatkan baris navigasi tab utama */
-    div[data-baseweb="tab-list"],
-    div[role="tablist"] {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100% !important;
-        margin: 0 auto !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-
-    /* Pengaturan jarak antar tombol tab */
-    button[data-baseweb="tab"],
-    button[role="tab"] {
-        font-size: 1.05rem !important;
-        font-weight: 500 !important;
-        padding: 10px 24px !important;
-        text-align: center !important;
-    }
-
-    /* Penataan kontainer tab luar */
-    div[data-testid="stTabs"] > div:first-child {
-        display: flex !important;
-        justify-content: center !important;
-        width: 100% !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
+# Wadah Tab Sejajar Konten
+tab_input, tab_history = st.tabs(["Catat Transaksi", "Log & Analisis Transaksi"])
 
 # --- TAB 1: INPUT STRUK ---
 with tab_input:

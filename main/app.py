@@ -86,35 +86,43 @@ username_display = current_user.get("username", st.session_state.get("username",
 
 # Sidebar Navigasi & Informasi User
 with st.sidebar:
+    initial = (username_display[:2] if len(username_display) >= 2 else username_display).upper()
     st.markdown(
         f"""
-        <div style="background: rgba(255,255,255,0.05); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px;">
-            <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Akun Masuk</div>
-            <div style="font-size: 1.1rem; font-weight: 600; color: #f0f2f6; margin-top: 2px;">👤 {username_display}</div>
-            <div style="display: inline-block; margin-top: 6px; padding: 2px 8px; font-size: 0.7rem; font-weight: 600; background: #ff4b4b22; color: #ff4b4b; border-radius: 4px; border: 1px solid #ff4b4b44;">
-                PRO PLAN
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; margin-bottom: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #262930; color: #e0e0e0; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.82rem; border: 1px solid rgba(255, 255, 255, 0.12);">
+                {initial}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.88rem; font-weight: 600; color: #f0f2f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {username_display}
+                </div>
+                <div style="font-size: 0.72rem; color: #8b949e;">
+                    Akun Terverifikasi
+                </div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    if st.button("Keluar (Logout)", use_container_width=True):
+    if st.button("Keluar", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_id = None
         st.session_state.username = None
+        st.session_state.user = None
         st.rerun()
 
-    st.divider()
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    st.caption("ANGGARAN & MONITORING")
 
-    st.markdown("##### 🎯 Target & Anggaran")
     saved_budget = db.get_user_budget(user_id) if hasattr(db, "get_user_budget") else 2500000.0
     monthly_budget = st.number_input(
-        "Batas Anggaran Bulanan (Rp):",
+        "Batas Bulanan (Rp)",
         min_value=0,
         value=int(saved_budget),
         step=100000,
-        help="Batas anggaran ini tersimpan khusus untuk akun Anda.",
+        label_visibility="collapsed",
     )
 
     if hasattr(db, "set_user_budget") and monthly_budget != saved_budget:
@@ -127,49 +135,48 @@ with st.sidebar:
         ratio = min(total_spent / monthly_budget, 1.0)
         st.progress(ratio)
         sisa = monthly_budget - total_spent
+        pct = (total_spent / monthly_budget) * 100
 
-        col_side1, col_side2 = st.columns(2)
-        with col_side1:
+        badge_bg = "rgba(46, 160, 67, 0.15)" if pct <= 75 else ("rgba(210, 153, 34, 0.15)" if pct <= 95 else "rgba(248, 81, 73, 0.15)")
+        badge_fg = "#3fb950" if pct <= 75 else ("#d29922" if pct <= 95 else "#f85149")
+
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; margin-bottom: 12px;">
+                <span style="font-size: 0.75rem; color: #8b949e;">Status Pemakaian</span>
+                <span style="font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: {badge_bg}; color: {badge_fg};">
+                    {pct:.1f}%
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
             st.caption("Terpakai")
-            st.write(f"**Rp{total_spent:,.0f}**")
-        with col_side2:
+            st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: #e6edf3;'>Rp{total_spent:,.0f}</span>", unsafe_allow_html=True)
+        with col_s2:
             st.caption("Sisa Saldo")
-            color = "#00e676" if sisa >= 0 else "#ff5252"
-            st.markdown(f"<span style='color: {color}; font-weight: bold;'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
+            sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
+            st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
 
-    st.divider()
-
-    st.markdown("##### 📁 Cadangan Data")
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    st.caption("EKSPOR DATA")
     if user_txs:
         df_export = pd.DataFrame(user_txs)
         csv_data = df_export.to_csv(index=False).encode("utf-8")
         st.download_button(
-            label="Unduh Riwayat (.CSV)",
+            label="Unduh CSV Transaksi",
             data=csv_data,
             file_name=f"transaksi_{username_display}.csv",
             mime="text/csv",
             use_container_width=True,
         )
+    else:
+        st.caption("Belum ada data transaksi.")
 
 
-st.markdown(
-    """
-    <style>
-    /* Pusatkan baris navigasi tab */
-    .stTabs [data-baseweb="tab-list"] {
-        justify-content: center;
-        gap: 24px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1.05rem;
-        font-weight: 500;
-        padding-left: 12px;
-        padding-right: 12px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
 

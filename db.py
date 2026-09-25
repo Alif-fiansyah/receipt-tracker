@@ -320,3 +320,19 @@ def set_budget(user_id: int, amount: float):
         )
         conn.commit()
         conn.close()
+
+def delete_receipt(receipt_id: int, user_id: int) -> bool:
+    import sqlite3
+    conn = sqlite3.connect("expenses.db")
+    cursor = conn.cursor()
+    try:
+        # Hapus item terkait terlebih dahulu
+        cursor.execute("DELETE FROM receipt_items WHERE receipt_id = ? AND EXISTS (SELECT 1 FROM receipts WHERE id = ? AND user_id = ?)", (receipt_id, receipt_id, user_id))
+        cursor.execute("DELETE FROM receipts WHERE id = ? AND user_id = ?", (receipt_id, user_id))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

@@ -178,6 +178,41 @@ with st.sidebar:
 
 
 
+# Pengaturan letak navigasi tab ke tengah
+st.markdown(
+    """
+    <style>
+    /* Pusatkan baris navigasi tab utama */
+    div[data-baseweb="tab-list"],
+    div[role="tablist"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Pengaturan jarak antar tombol tab */
+    button[data-baseweb="tab"],
+    button[role="tab"] {
+        font-size: 1.05rem !important;
+        font-weight: 500 !important;
+        padding: 10px 24px !important;
+        text-align: center !important;
+    }
+
+    /* Penataan kontainer tab luar */
+    div[data-testid="stTabs"] > div:first-child {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 tab_input, tab_history = st.tabs(["Pindai Bukti Bayar", "Log & Analisis Transaksi"])
 
 # --- TAB 1: INPUT STRUK ---
@@ -281,7 +316,9 @@ with tab_history:
             raw_data,
             columns=["ID", "Merchant", "Tanggal", "Nominal", "Kategori", "Waktu Simpan"],
         )
+        df["Tanggal_dt"] = pd.to_datetime(df["Tanggal"], errors="coerce")
 
+        # 1. Metrik Utama
         total_spent = df["Nominal"].sum()
         remaining_budget = monthly_budget - total_spent
         spent_percent = min(100.0, (total_spent / monthly_budget) * 100.0) if monthly_budget > 0 else 0.0
@@ -290,41 +327,107 @@ with tab_history:
         col_m1.metric("Total Pengeluaran", f"Rp {total_spent:,.0f}")
         col_m2.metric("Sisa Anggaran", f"Rp {remaining_budget:,.0f}")
         col_m3.metric("Realisasi Anggaran", f"{spent_percent:.1f}%")
-
         st.progress(spent_percent / 100.0)
-        st.write("")
 
-        st.markdown("##### Tren Pengeluaran Harian")
-        chart_df = df.groupby("Tanggal")["Nominal"].sum().reset_index()
-        chart = (
-            alt.Chart(chart_df)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("Tanggal:T", title="Tanggal Transaksi"),
-                y=alt.Y("Nominal:Q", title="Total Belanja (Rp)"),
-                tooltip=["Tanggal", "Nominal"],
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+        # 2. Kontrol Filter
+        col_f1, col_f2 = st.columns([1, 2])
+        with col_f1:
+            time_filter = st.selectbox("Rentang Waktu", ["Semua Waktu", "30 Hari Terakhir", "7 Hari Terakhir"])
+        with col_f2:
+            search_query = st.text_input("Cari Merchant / Toko", placeholder="Ketik nama tempat...")
+
+        # Terapkan Filter
+        filtered_df = df.copy()
+        if time_filter == "7 Hari Terakhir":
+            cutoff = pd.Timestamp.now() - pd.Timedelta(days=7)
+            filtered_df = filtered_df[filtered_df["Tanggal_dt"] >= cutoff]
+        elif time_filter == "30 Hari Terakhir":
+            cutoff = pd.Timestamp.now() - pd.Timedelta(days=30)
+            filtered_df = filtered_df[filtered_df["Tanggal_dt"] >= cutoff]
+
+        if search_query.strip():
+            filtered_df = filtered_df[filtered_df["Merchant"].str.contains(search_query.strip(), case=False, na=False)]
+
+        # 3. Visualisasi Analisis Ganda
+        col_g1, col_g2 = st.columns([1.2, 1], gap="medium")
+
+        with col_g1:
+            st.markdown("##### Tren Harian")
+            if not filtered_df.empty:
+                daily_df = filtered_df.groupby("Tanggal", as_index=False)["Nominal"].sum().sort_values("Tanggal")
+                line_chart = (
+                    alt.Chart(daily_df)
+                    .mark_line(point=True, color="#ff4b4b")
+                    .encode(
+                        x=alt.X("Tanggal:N", title="Tanggal", axis=alt.Axis(labelAngle=-45)),
+                        y=alt.Y("Nominal:Q", title="Total Belanja (Rp)"),
+                        tooltip=["Tanggal", alt.Tooltip("Nominal:Q", format=",.0f")],
+                    )
+                    .properties(height=260)
+                )
+                st.altair_chart(line_chart, use_container_width=True)
+            else:
+                st.caption("Tidak ada data pada filter ini.")
+
+        with col_g2:
+            st.markdown("##### Pengeluaran per Kategori")
+            if not filtered_df.empty:
+                cat_df = filtered_df.groupby("Kategori", as_index=False)["Nominal"].sum()
+                donut_chart = (
+                    alt.Chart(cat_df)
+                    .mark_arc(innerRadius=45)
+                    .encode(
+                        theta=alt.Theta("Nominal:Q"),
+                        color=alt.Color("Kategori:N", legend=alt.Legend(title="Kategori", orient="bottom")),
+                        tooltip=["Kategori", alt.Tooltip("Nominal:Q", format=",.0f")],
+                    )
+                    .properties(height=260)
+                )
+                st.altair_chart(donut_chart, use_container_width=True)
+            else:
+                st.caption("Tidak ada data pada filter ini.")
+
+        st.divider()
+
+        # 4. Tabel Riwayat Berformat Rupiah
+        st.markdown("##### Riwayat Transaksi")
+        display_df = filtered_df[["ID", "Merchant", "Tanggal", "Nominal", "Kategori", "Waktu Simpan"]].copy()
+        display_df["Nominal"] = display_df["Nominal"].apply(lambda v: f"Rp {v:,.0f}")
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+        # Tombol CSV & Aksi Kelola Transaksi
+        col_act1, col_act2 = st.columns([1, 1])
+        with col_act1:
+            csv_data = filtered_df[["ID", "Merchant", "Tanggal", "Nominal", "Kategori", "Waktu Simpan"]].to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="Unduh Riwayat Terpilih (CSV)",
+                data=csv_data,
+                file_name=f"transaksi_{current_user['username']}.csv",
+                mime="text/csv",
+                use_container_width=True,
             )
-            .interactive()
-        )
-        st.altair_chart(chart, use_container_width=True)
+
+        with col_act2:
+            with st.popover("Hapus Transaksi", use_container_width=True):
+                st.write("**Pilih Transaksi yang Ingin Dihapus**")
+                tx_options = {f"#{row.ID} - {row.Merchant} (Rp {row.Nominal:,.0f})": row.ID for row in df.itertuples()}
+                selected_label = st.selectbox("Daftar Transaksi:", list(tx_options.keys()))
+                if st.button("Konfirmasi Hapus", type="primary", use_container_width=True):
+                    target_id = tx_options[selected_label]
+                    if hasattr(db, "delete_receipt") and db.delete_receipt(target_id, user_id=user_id):
+                        st.success(f"Transaksi {selected_label} berhasil dihapus.")
+                        st.rerun()
+                    else:
+                        st.error("Gagal menghapus transaksi dari database.")
 
         st.divider()
 
-        st.markdown("##### Tabel Riwayat Transaksi")
-        st.dataframe(df, use_container_width=True)
-
-        csv_data = df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Unduh Log Transaksi (CSV)",
-            data=csv_data,
-            file_name=f"expenselog_{current_user['username']}.csv",
-            mime="text/csv",
-        )
-
-        st.divider()
-
+        # 5. Analisis AI Finansial
         st.markdown("##### Analisis Pengeluaran")
         if st.button("Analisis Ringkasan Finansial"):
             with st.spinner("Menganalisis catatan pengeluaran..."):
                 advice = tracker.generate_financial_advice(df.to_dict(orient="records"))
                 st.markdown(advice)
+

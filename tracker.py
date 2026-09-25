@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import time
@@ -10,11 +11,7 @@ from pydantic import BaseModel, Field
 import db
 
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
 
-if not api_key:
-    # Jangan langsung crash sys.exit agar Streamlit Cloud tidak putus koneksi jika env terlambat dimuat
-    pass
 
 def get_gemini_client():
     current_key = os.getenv("GEMINI_API_KEY")
@@ -23,7 +20,6 @@ def get_gemini_client():
     return genai.Client(api_key=current_key)
 
 
-# Definisi Skema Data Ekstraksi Struk
 class ReceiptItem(BaseModel):
     item_name: str = Field(description="Nama barang atau jasa yang dibeli")
     quantity: float = Field(default=1.0, description="Jumlah item yang dibeli")
@@ -39,15 +35,24 @@ class ReceiptExtraction(BaseModel):
 
 
 def extract_receipt(image_input) -> dict:
-    """Menerima path berkas string atau objek PIL Image langsung dari Streamlit."""
     client = get_gemini_client()
 
+    # Pastikan berkas dikonversi ke bytes JPEG yang valid
     if isinstance(image_input, str):
         if not os.path.exists(image_input):
             raise FileNotFoundError(f"File gambar '{image_input}' tidak ditemukan.")
-        image = Image.open(image_input)
+        img = Image.open(image_input)
     else:
-        image = image_input
+        img = image_input
+
+    # Konversi PIL Image ke bytes JPEG
+    buffered = io.BytesIO()
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    img.save(buffered, format="JPEG")
+    img_bytes = buffered.getvalue()
+
+    image_part = types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
 
     prompt = """
     Kamu adalah sistem OCR dan ekstraksi struk pengeluaran otomatis.
@@ -62,32 +67,29 @@ def extract_receipt(image_input) -> dict:
     """
 
     daftar_model = ["gemini-2.5-flash", "gemini-2.0-flash"]
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema=ReceiptExtraction,
-        temperature=0.1,
-    )
+    last_error = None
 
     for nama_model in daftar_model:
         try:
             response = client.models.generate_content(
                 model=nama_model,
-                contents=[prompt, image],
-                config=config,
+                contents=[prompt, image_part],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=ReceiptExtraction,
+                    temperature=0.1,
+                ),
             )
-            # Kembalikan dict agar cocok dengan pemrosesan session_state di app.py
             parsed_data = ReceiptExtraction.model_validate_json(response.text)
             return parsed_data.model_dump()
         except Exception as e:
-            if "503" in str(e) or "404" in str(e):
-                time.sleep(1)
-                continue
-            raise e
+            last_error = e
+            time.sleep(1)
+            continue
 
-    raise RuntimeError("Layanan Gemini sedang sibuk, coba beberapa saat lagi.")
+    raise RuntimeError(f"Gagal memproses struk: {last_error}")
 
 
-# Alias untuk menjaga kompatibilitas CLI terminal lama
 scan_receipt_with_gemini = extract_receipt
 
 

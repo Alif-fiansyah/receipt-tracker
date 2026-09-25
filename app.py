@@ -57,6 +57,15 @@ if not st.session_state.get("current_user"):
         line-height: 1.5;
         margin-bottom: 24px;
     }
+    
+    /* Sembunyikan instruksi Press Enter to submit form */
+    div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+    span:has-text("Press Enter to submit form") {
+        display: none !important;
+    }
+
     .auth-feature-card {
         padding: 12px 14px;
         margin-bottom: 10px;
@@ -71,7 +80,7 @@ if not st.session_state.get("current_user"):
     _, col_main, _ = st.columns([0.22, 0.56, 0.22])
 
     with col_main:
-        st.markdown('<div class="auth-hero-title">ExpenseLog · Smart Financial Assistant</div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-hero-title">Smart Financial Assistant</div>', unsafe_allow_html=True)
         st.markdown('<div class="auth-hero-sub">Platform cerdas pencatatan transaksi harian, automasi ekstraksi nota belanja berbasis AI, dan manajemen anggaran keuangan pribadi secara presisi.</div>', unsafe_allow_html=True)
 
         # 2. Form Autentikasi (Merah) di Tengah Atas

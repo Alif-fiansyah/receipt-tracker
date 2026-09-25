@@ -143,18 +143,16 @@ with st.sidebar:
         badge_bg = "rgba(46, 160, 67, 0.15)" if pct <= 75 else ("rgba(210, 153, 34, 0.15)" if pct <= 95 else "rgba(248, 81, 73, 0.15)")
         badge_fg = "#3fb950" if pct <= 75 else ("#d29922" if pct <= 95 else "#f85149")
 
-                # Hitung sisa hari dalam bulan berjalan untuk Batas Harian Aman
-        now = datetime.now()
-        days_in_month = calendar.monthrange(now.year, now.month)[1]
-        days_left = max(days_in_month - now.day + 1, 1)
-        safe_daily = max(sisa / days_left, 0) if sisa > 0 else 0
+                        # Hitung pengeluaran khusus hari ini
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_spent = sum(t.get("total_amount", 0) for t in user_txs if str(t.get("transaction_date", "")).startswith(today_str))
 
         st.markdown(
             f"""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 10px; padding: 6px 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                <span style="font-size: 0.75rem; color: #8b949e;">Jatah Harian ({days_left} hari tersisa)</span>
-                <span style="font-size: 0.8rem; font-weight: 600; color: #58a6ff;">
-                    Rp{safe_daily:,.0f}/hari
+                <span style="font-size: 0.75rem; color: #8b949e;">Belanja Hari Ini</span>
+                <span style="font-size: 0.82rem; font-weight: 600; color: #e6edf3;">
+                    Rp{today_spent:,.0f}
                 </span>
             </div>
             """,
@@ -190,62 +188,63 @@ with st.sidebar:
     else:
         st.caption("Belum ada pengeluaran.")
 
-# Wadah Tab Sejajar Konten
-tab_input, tab_history = st.tabs(["Catat Transaksi", "Log & Analisis Transaksi"])
+# Wadah Konten Utama Terpusat
+_, col_center, _ = st.columns([0.18, 0.64, 0.18])
+with col_center:
+    tab_input, tab_history = st.tabs(["Catat Transaksi", "Log & Analisis Transaksi"])
 
 # --- TAB 1: INPUT STRUK ---
 with tab_input:
-    _, col_center, _ = st.columns([0.18, 0.64, 0.18])
-    with col_center:
-        input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
+    input_method = st.radio("Pilih metode:", ["Pindai Kamera", "Unggah Berkas", "Input Manual"], horizontal=True)
 
-        if input_method == "Input Manual":
-            st.session_state.active_image = None
-            if "manual_success_notif" in st.session_state:
-                st.success(st.session_state.pop("manual_success_notif"))
-            st.markdown("##### Catat Transaksi Tunai / Manual")
-            with st.form("form_manual_expense", clear_on_submit=True):
-                m_merchant = st.text_input("Nama Merchant / Tempat", placeholder="Contoh: Burjo Rafa, Parkir, Warung Makan")
-                col_m1, col_m2 = st.columns(2)
-                with col_m1:
-                    m_date = st.date_input("Tanggal Transaksi")
-                with col_m2:
-                    m_cat = st.selectbox("Kategori", ["Makanan & Minuman", "Belanja Harian", "Transportasi", "Kebutuhan Pokok", "Hiburan", "Tagihan & Utilitas", "Lainnya"])
-                m_item = st.text_input("Deskripsi / Nama Item", placeholder="Contoh: Nasi Goreng + Es Teh")
-                m_total = st.number_input("Nominal (Rp)", min_value=0.0, step=1000.0)
-                if st.form_submit_button("Simpan Transaksi", use_container_width=True):
-                    if not m_merchant.strip():
-                        st.warning("Mohon isi nama merchant/tempat.")
-                    elif m_total <= 0:
-                        st.warning("Nominal transaksi harus lebih dari 0.")
-                    else:
-                        manual_payload = {
-                            "merchant": m_merchant.strip(),
-                            "transaction_date": str(m_date),
-                            "total_amount": float(m_total),
-                            "category": m_cat,
-                            "items": [{"item_name": m_item.strip() if m_item.strip() else m_merchant.strip(), "quantity": 1.0, "total_price": float(m_total)}],
-                        }
-                        r_id = db.save_receipt_data(manual_payload, user_id=user_id)
-                        st.toast(f"Transaksi berhasil disimpan! (ID: #{r_id})", icon="✅")
-                        st.session_state["manual_success_notif"] = f"Transaksi sebesar Rp{m_total:,.0f} di {m_merchant.strip()} berhasil dicatat! (ID: #{r_id})"
-                        st.rerun()
+    if input_method == "Input Manual":
+        st.session_state.active_image = None
+        if "manual_success_notif" in st.session_state:
+            st.success(st.session_state.pop("manual_success_notif"))
+        st.markdown("##### Catat Transaksi Tunai / Manual")
+        with st.form("form_manual_expense", clear_on_submit=True):
+            m_merchant = st.text_input("Nama Merchant / Tempat", placeholder="Contoh: Burjo Rafa, Parkir, Warung Makan")
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                m_date = st.date_input("Tanggal Transaksi")
+            with col_m2:
+                m_cat = st.selectbox("Kategori", ["Makanan & Minuman", "Belanja Harian", "Transportasi", "Kebutuhan Pokok", "Hiburan", "Tagihan & Utilitas", "Lainnya"])
+            m_item = st.text_input("Deskripsi / Nama Item", placeholder="Contoh: Nasi Goreng + Es Teh")
+            m_total = st.number_input("Nominal (Rp)", min_value=0.0, step=1000.0)
+            if st.form_submit_button("Simpan Transaksi", use_container_width=True):
+                if not m_merchant.strip():
+                    st.warning("Mohon isi nama merchant/tempat.")
+                elif m_total <= 0:
+                    st.warning("Nominal transaksi harus lebih dari 0.")
+                else:
+                    manual_payload = {
+                        "merchant": m_merchant.strip(),
+                        "transaction_date": str(m_date),
+                        "total_amount": float(m_total),
+                        "category": m_cat,
+                        "items": [{"item_name": m_item.strip() if m_item.strip() else m_merchant.strip(), "quantity": 1.0, "total_price": float(m_total)}],
+                    }
+                    r_id = db.save_receipt_data(manual_payload, user_id=user_id)
+                    st.toast(f"Transaksi berhasil disimpan! (ID: #{r_id})", icon="✅")
+                    st.session_state["manual_success_notif"] = f"Transaksi sebesar Rp{m_total:,.0f} di {m_merchant.strip()} berhasil dicatat! (ID: #{r_id})"
+                    st.rerun()
 
-        elif input_method == "Pindai Kamera":
-            st.markdown("##### Pindai Kamera")
-            camera_img = st.camera_input("Ambil foto bukti bayar")
-            if camera_img is not None:
-                st.session_state.active_image = camera_img.getvalue()
+    elif input_method == "Pindai Kamera":
+        st.markdown("##### Pindai Kamera")
+        camera_img = st.camera_input("Ambil foto bukti bayar")
+        if camera_img is not None:
+            st.session_state.active_image = camera_img.getvalue()
 
-        elif input_method == "Unggah Berkas":
-            st.markdown("##### Unggah Berkas Transaksi")
-            uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png", "heic", "heif"])
-            if uploaded_file is not None:
-                st.session_state.active_image = uploaded_file.getvalue()
+    elif input_method == "Unggah Berkas":
+        st.markdown("##### Unggah Berkas Transaksi")
+        uploaded_file = st.file_uploader("Pilih gambar...", type=["jpg", "jpeg", "png", "heic", "heif"])
+        if uploaded_file is not None:
+            st.session_state.active_image = uploaded_file.getvalue()
 
-        if input_method in ["Pindai Kamera", "Unggah Berkas"] and st.session_state.get("active_image"):
-            st.markdown("##### Pratinjau Dokumen")
-            st.image(st.session_state.active_image, use_container_width=True)
+    if input_method in ["Pindai Kamera", "Unggah Berkas"] and st.session_state.get("active_image"):
+        st.markdown("##### Pratinjau Dokumen")
+        st.image(st.session_state.active_image, use_container_width=True)
+
 
     # Human-in-the-Loop Verification Form
     if st.session_state.get("temp_extracted_data"):

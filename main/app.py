@@ -34,16 +34,51 @@ if "user" not in st.session_state:
 
 # ==========================================
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
-# ==========================================
-if not st.session_state.user:
-    _, col_center, _ = st.columns([1, 1.2, 1])
+if not st.session_state.current_user:
+    st.markdown("""
+    <style>
+    .auth-hero-title {
+        font-size: 2.3rem;
+        font-weight: 800;
+        line-height: 1.15;
+        background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 8px;
+    }
+    .auth-feature-card {
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    with col_center:
-        st.markdown("<h2 style='text-align: center; margin-bottom: 0px;'>ExpenseLog</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 2rem;'>Pencatatan transaksi harian dan manajemen anggaran belanja.</p>", unsafe_allow_html=True)
+    col_hero, col_gap, col_auth = st.columns([1.15, 0.1, 1.0])
 
+    with col_hero:
+        st.markdown('<div class="auth-hero-title">ExpenseLog.</div>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size: 0.95rem; color: #8b949e; line-height: 1.5; margin-bottom: 22px;">Platform cerdas pencatatan transaksi harian, automasi ekstraksi nota belanja berbasis AI, dan manajemen anggaran keuangan pribadi secara presisi.</p>', unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Ekstraksi Nota AI & OCR</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Pindai struk fisik secara otomatis tanpa perlu mengetik ulang merchant, tanggal, dan nominal.</div>
+        </div>
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Analitik Tren & Kategori</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Visualisasi interaktif riwayat harian dan proporsi alokasi dana secara real-time.</div>
+        </div>
+        <div class="auth-feature-card">
+            <div style="font-weight: 600; font-size: 0.88rem; color: #f0f2f6;">Financial AI Advisor</div>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 3px;">Evaluasi pola belanja terintegrasi untuk mencegah defisit anggaran bulanan Anda.</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_auth:
         tab_login, tab_register = st.tabs(["Masuk", "Daftar Akun"])
-
         with tab_login:
             st.markdown("##### Masuk ke Akun Anda")
             with st.form("form_login"):
@@ -53,11 +88,12 @@ if not st.session_state.user:
 
                 if btn_login:
                     if not login_user or not login_pwd:
-                        st.warning("Mohon lengkapi username dan password.")
+                        st.warning("Username dan Password wajib diisi.")
                     else:
                         user_data = db.authenticate_user(login_user, login_pwd)
                         if user_data:
-                            st.session_state.user = user_data
+                            st.session_state.current_user = user_data
+                            st.toast(f"Selamat datang kembali, {user_data.get('username', 'User')}!", icon="👋")
                             st.rerun()
                         else:
                             st.error("Username atau password salah.")
@@ -65,22 +101,23 @@ if not st.session_state.user:
         with tab_register:
             st.markdown("##### Buat Akun Baru")
             with st.form("form_register"):
-                reg_user = st.text_input("Buat Username").strip()
-                reg_pwd = st.text_input("Buat Password", type="password")
-                btn_reg = st.form_submit_button("Daftar Akun", use_container_width=True)
+                reg_user = st.text_input("Username Baru").strip()
+                reg_pwd = st.text_input("Password", type="password")
+                reg_budget = st.number_input("Target Anggaran Bulanan (Rp)", min_value=0, value=2500000, step=100000, format="%d")
+                btn_reg = st.form_submit_button("Daftar Akun", type="primary", use_container_width=True)
 
                 if btn_reg:
                     if not reg_user or not reg_pwd:
-                        st.warning("Mohon isi username dan password.")
+                        st.warning("Semua kolom registrasi wajib diisi.")
                     else:
-                        success = db.register_user(reg_user, reg_pwd)
+                        success = db.create_user(reg_user, reg_pwd, monthly_budget=float(reg_budget))
                         if success:
-                            st.success("Akun berhasil dibuat! Silakan masuk pada tab 'Masuk'.")
+                            st.success("Akun berhasil dibuat! Silakan beralih ke tab Masuk.")
                         else:
                             st.error("Username sudah terdaftar. Gunakan username lain.")
-        st.stop()
 
-# ==========================================
+    st.stop()
+
 # HALAMAN UTAMA (SETELAH BERHASIL LOGIN)
 # ==========================================
 current_user = st.session_state.user

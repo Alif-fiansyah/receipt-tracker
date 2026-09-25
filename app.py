@@ -33,8 +33,9 @@ except FileNotFoundError:
 db.init_db()
 
 # State login di session
-if "user" not in st.session_state:
-    st.session_state.user = None
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
+current_user = st.session_state.current_user
 
 # ==========================================
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
@@ -146,7 +147,7 @@ if not st.session_state.get("current_user"):
 current_user = st.session_state.user
 if not current_user:
     st.stop()
-user_id = current_user["id"] if isinstance(current_user, dict) else current_user
+user_id = current_user["id"] if (current_user and isinstance(current_user, dict)) else (st.session_state.current_user["id"] if st.session_state.get("current_user") else 1) if isinstance(current_user, dict) else current_user
 username_display = current_user.get("username", st.session_state.get("username", "User"))
 
 # Sidebar Navigasi & Informasi User

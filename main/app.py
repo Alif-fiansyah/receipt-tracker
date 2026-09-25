@@ -12,7 +12,7 @@ import tracker
 
 # Inisialisasi konfigurasi dasar Streamlit
 st.set_page_config(
-    page_title="ExpenseLog",
+    page_title="EXPENSELog",
     page_icon="■",
     layout="wide",
     initial_sidebar_state="expanded",

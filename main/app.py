@@ -34,8 +34,9 @@ db.init_db()
 
 # State login di session
 if "current_user" not in st.session_state:
-    st.session_state.current_user = None
-current_user = st.session_state.current_user
+    st.session_state["current_user"] = None
+if "user" not in st.session_state:
+    st.session_state["user"] = None
 
 # ==========================================
 # HALAMAN LOGIN / REGISTER (JIKA BELUM LOGIN)
@@ -144,7 +145,7 @@ if not st.session_state.get("current_user"):
 
 # HALAMAN UTAMA (SETELAH BERHASIL LOGIN)
 # ==========================================
-current_user = st.session_state.user
+current_user = st.session_state.get("current_user") or st.session_state.get("user")
 if not current_user:
     st.stop()
 user_id = current_user["id"] if (current_user and isinstance(current_user, dict)) else (st.session_state.current_user["id"] if st.session_state.get("current_user") else 1) if isinstance(current_user, dict) else current_user

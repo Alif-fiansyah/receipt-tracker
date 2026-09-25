@@ -43,11 +43,23 @@ def extract_receipt(image_input) -> dict:
     else:
         img = image_input
 
-    # Konversi PIL Image ke bytes JPEG
-    buffered = io.BytesIO()
-    if img.mode != "RGB":
+    # 1. Tangani mode warna iPhone (RGBA / P3) agar tidak error saat disimpan ke JPEG
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[-1])  # Pakai alpha channel sebagai mask
+        img = background
+    elif img.mode != "RGB":
         img = img.convert("RGB")
-    img.save(buffered, format="JPEG")
+
+    # 2. Perkecil resolusi jika terlalu besar (kamera/screenshot iPhone biasanya 3000-4000px)
+    max_dim = 1600
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
+    # 3. Kompresi ke JPEG dengan kualitas optimal
+    buffered = io.BytesIO()
+    img.save(buffered, format="JPEG", quality=85, optimize=True)
     img_bytes = buffered.getvalue()
 
     image_part = types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
@@ -64,7 +76,6 @@ def extract_receipt(image_input) -> dict:
     5. Ambil nilai TOTAL pembayaran akhir yang valid (setelah diskon/pajak jika ada).
     """
 
-    # Model utama dan alternatif jika sedang overload
     kandidat_model = ["gemini-3.8-flash", "gemini-2.5-pro"]
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -75,7 +86,6 @@ def extract_receipt(image_input) -> dict:
     last_error = None
 
     for model_name in kandidat_model:
-        # Coba hingga 3 kali percobaan untuk setiap model jika server sibuk (503/429)
         for attempt in range(3):
             try:
                 response = client.models.generate_content(
@@ -88,16 +98,13 @@ def extract_receipt(image_input) -> dict:
             except Exception as e:
                 last_error = e
                 err_msg = str(e)
-                # Jika server sibuk atau limit sementara, tunggu sebentar lalu coba lagi
                 if "503" in err_msg or "429" in err_msg or "UNAVAILABLE" in err_msg:
                     time.sleep(2 * (attempt + 1))
                     continue
                 else:
-                    # Jika error model tidak ditemukan atau invalid, langsung ganti model
                     break
 
     raise RuntimeError(f"Gagal memproses struk setelah beberapa percobaan: {last_error}")
-
 
 scan_receipt_with_gemini = extract_receipt
 

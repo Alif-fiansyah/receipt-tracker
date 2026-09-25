@@ -148,25 +148,29 @@ with st.sidebar:
             sisa_color = "#3fb950" if sisa >= 0 else "#f85149"
             st.markdown(f"<span style='font-size: 0.95rem; font-weight: 600; color: {sisa_color};'>Rp{sisa:,.0f}</span>", unsafe_allow_html=True)
 
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    st.caption("AKTIVITAS TERAKHIR")
-    if user_txs:
-        # Ambil 3 transaksi paling baru
-        recent_txs = list(reversed(user_txs))[:3]
-        for tx in recent_txs:
-            merchant = tx.get("merchant", "Transaksi")
-            amount = tx.get("total_amount", 0)
-            st.markdown(
-                f"""
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <span style="font-size: 0.82rem; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">{merchant}</span>
-                    <span style="font-size: 0.82rem; font-weight: 600; color: #f85149;">-Rp{amount:,.0f}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    else:
-        st.caption("Belum ada pengeluaran.")
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    st.caption("TARGET & ALOKASI TABUNGAN")
+    
+    with st.expander("Kalkulator Rencana Tabungan", expanded=False):
+        target_tabungan = st.number_input(
+            "Target Tabungan (Rp)",
+            min_value=0,
+            value=500000,
+            step=50000,
+            help="Jumlah uang yang ingin Anda amankan/tabung bulan ini."
+        )
+        anggaran_bersih = max(monthly_budget - target_tabungan, 0)
+        st.markdown(
+            f"""
+            <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); margin-top: 8px;">
+                <div style="font-size: 0.75rem; color: #8b949e;">Maksimal Belanja Bersih:</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #58a6ff;">Rp{anggaran_bersih:,.0f}</div>
+                <div style="font-size: 0.72rem; color: #8b949e; margin-top: 4px;">Setelah disisihkan untuk tabungan</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 
 # Wadah Konten Utama Terpusat
 _, col_center, _ = st.columns([0.18, 0.64, 0.18])

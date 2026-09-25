@@ -144,7 +144,9 @@ if not st.session_state.get("current_user"):
 # HALAMAN UTAMA (SETELAH BERHASIL LOGIN)
 # ==========================================
 current_user = st.session_state.user
-user_id = current_user["id"]
+if not current_user:
+    st.stop()
+user_id = current_user["id"] if isinstance(current_user, dict) else current_user
 username_display = current_user.get("username", st.session_state.get("username", "User"))
 
 # Sidebar Navigasi & Informasi User
